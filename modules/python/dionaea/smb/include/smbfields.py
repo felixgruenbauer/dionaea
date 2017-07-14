@@ -176,6 +176,27 @@ SMB_Header_Flags2 = {
     SMB_FLAGS2_UNICODE             :'UNICODE',
 }
 
+# Service types MS-CIFS p. 297
+SMB_SERVICE_DISK_SHARE          = "A:"
+SMB_SERVICE_PRINT_SHARE         = "LTP1:"
+SMB_SERVICE_NAMED_PIPE          = "IPC"
+SMB_SERVICE_COMM_DEVICE         = "COMM"
+SMB_SERVICE_ANY                 = "?????"
+
+# Resource types MS-CIFS p.350
+SMB_RES_DISK            = 0x0000
+SMB_RES_BYTE_MODE_PIPE  = 0x0001
+SMB_RES_MSG_MODE_PIPE   = 0x0002
+SMB_RES_PRINTER         = 0x0003
+SMB_RES_COMM_DEV        = 0x0004
+
+SMB_ResourceTypes = {
+        SMB_RES_DISK            : "FILE_TYPE_DISK",      
+        SMB_RES_BYTE_MODE_PIPE  : "FILE_TYPE_BYTE_MODE_PIPE",
+        SMB_RES_MSG_MODE_PIPE   : "FILE_TYPE_MESSAGE_MODE_PIPE",
+        SMB_RES_PRINTER         : "FILE_TYPE_PRINTER",
+        SMB_RES_COMM_DEV        : "FILE_TYPE_COMM_DEVICE"
+}
 # SMB_Header.Command
 SMB_COM_CREATE_DIRECTORY       = 0x00
 SMB_COM_DELETE_DIRECTORY       = 0x01
@@ -367,6 +388,116 @@ SMB_Trans2_Commands = {
     SMB_TRANS2_CREATE_DIRECTORY         :"TRANS2_CREATE_DIRECTORY",
     SMB_TRANS2_SESSION_SETUP            :"TRANS2_SESSION_SETUP",
 }
+# Trans2 QUERY Information level MS-CIFS p.65
+SMB_INFO_STANDARD                 = 0x0001
+SMB_INFO_QUERY_EA_SIZE            = 0x0002
+SMB_INFO_QUERY_EAS_FROM_LIST      = 0x0003
+SMB_INFO_QUERY_ALL_EAS            = 0x0004
+SMB_INFO_IS_NAME_VALID            = 0x0006
+SMB_QUERY_FILE_BASIC_INFO         = 0x0101
+SMB_QUERY_FILE_STANDARD_INFO      = 0x0102
+SMB_QUERY_FILE_EA_INFO            = 0x0103
+SMB_QUERY_FILE_NAME_INFO          = 0x0104
+SMB_QUERY_FILE_ALL_INFO           = 0x0107
+SMB_QUERY_FILE_ALT_NAME_INFO      = 0x0108
+SMB_QUERY_STREAM_INFO             = 0x0109
+SMB_QUERY_FILE_COMPRESSION_INFO   = 0x010b
+SMB_QUERY_FILE_INTERNAL_INFO      = 1006
+
+SMB_QueryInfoLvl = {
+    SMB_INFO_STANDARD                 : 0x0001,
+    SMB_INFO_QUERY_EA_SIZE            : 0x0002,
+    SMB_INFO_QUERY_EAS_FROM_LIST      : 0x0003,
+    SMB_INFO_QUERY_ALL_EAS            : 0x0004,
+    SMB_INFO_IS_NAME_VALID            : 0x0006,
+    SMB_QUERY_FILE_BASIC_INFO         : 0x0101,
+    SMB_QUERY_FILE_STANDARD_INFO      : 0x0102,
+    SMB_QUERY_FILE_EA_INFO            : 0x0103,
+    SMB_QUERY_FILE_NAME_INFO          : 0x0104,
+    SMB_QUERY_FILE_ALL_INFO           : 0x0107,
+    SMB_QUERY_FILE_ALT_NAME_INFO      : 0x0108,
+    SMB_QUERY_STREAM_INFO             : 0x0109,
+    SMB_QUERY_FILE_COMPRESSION_INFO   : 0x010b,
+    SMB_QUERY_FILE_INTERNAL_INFO      : 0x1006
+}
+
+# Trans2 QUERY_FS infomation level codes MS-CIFS p.65
+SMB_INFO_ALLOCATION                 = 0x0001
+SMB_INFO_VOLUME                     = 0x0002
+SMB_QUERY_FS_VOLUME_INFO            = 0x0102
+SMB_QUERY_FS_SIZE_INFO              = 0x0103
+SMB_QUERY_FS_DEVICE_INFO            = 0x0104
+SMB_QUERY_FS_ATTRIBUTE_INFO         = 0x0105
+
+SMB_QueryFSInfoLvl = { 
+    SMB_INFO_ALLOCATION         : "SMB_INFO_ALLOCATION",               
+    SMB_INFO_VOLUME             : "SMB_INFO_VOLUME",
+    SMB_QUERY_FS_VOLUME_INFO    : "SMB_QUERY_FS_VOLUME_INFO",
+    SMB_QUERY_FS_SIZE_INFO      : "SMB_QUERY_FS_SIZE_INFO",
+    SMB_QUERY_FS_DEVICE_INFO    : "SMB_QUERY_FS_DEVICE_INFO",
+    SMB_QUERY_FS_ATTRIBUTE_INFO : "SMB_QUERY_FS_ATTRIBUTE_INFO"
+}
+
+# TRANS2 FIND Information Level Codes MS-CIFS p.64
+SMB_INFO_STANDARD                   = 0x0001
+SMB_INFO_QUERY_EA_SIZE              = 0x0002
+SMB_INFO_QUERY_EAS_FROM_LIST        = 0x0003
+SMB_FIND_FILE_DIRECTORY_INFO        = 0x0101
+SMB_FIND_FILE_FULL_DIRECTORY_INFO   = 0x0102
+SMB_FIND_FILE_NAMES_INFO            = 0x0103
+SMB_FIND_FILE_BOTH_DIRECTORY_INFO   = 0x0104
+
+SMB_Trans2_FIND_Info_Level = {
+    SMB_INFO_STANDARD                   :"SMB_INFO_STANDARD",
+    SMB_INFO_QUERY_EA_SIZE              :"SMB_INFO_QUERY_EA_SIZE",
+    SMB_INFO_QUERY_EAS_FROM_LIST        :"SMB_INFO_QUERY_EA_SIZE",
+    SMB_FIND_FILE_DIRECTORY_INFO        :"SMB_FIND_FILE_DIRECTORY_INFO",     
+    SMB_FIND_FILE_FULL_DIRECTORY_INFO   :"SMB_FIND_FILE_FULL_DIRECTORY_INFO",
+    SMB_FIND_FILE_NAMES_INFO            :"SMB_FIND_FILE_NAMES_INFO",
+    SMB_FIND_FILE_BOTH_DIRECTORY_INFO   :"SMB_FIND_FILE_BOTH_DIRECTORY_INFO",
+}
+
+
+# Trans2 FIND_FIRST2 flags
+SMB_FIND_CLOSE_AFTER_REQUEST     = 0x0001
+SMB_FIND_CLOSE_AT_EOS            = 0x0002
+SMB_FIND_RETURN_RESUME_KEYS      = 0x0004
+SMB_FIND_CONTINUE_FROM_LAST      = 0x0008
+SMB_FIND_WITH_BACKUP_INTENT      = 0x0010
+
+SMB_Trans2_FIND_FIRST2_Flags = {
+    SMB_FIND_CLOSE_AFTER_REQUEST     :"SMB_FIND_CLOSE_AFTER_REQUEST",
+    SMB_FIND_CLOSE_AT_EOS            :"SMB_FIND_CLOSE_AT_EOS",
+    SMB_FIND_RETURN_RESUME_KEYS      :"SMB_FIND_RETURN_RESUME_KEYS",
+    SMB_FIND_CONTINUE_FROM_LAST      :"SMB_FIND_CONTINUE_FROM_LAST",
+    SMB_FIND_WITH_BACKUP_INTENT      :"SMB_FIND_WITH_BACKUP_INTENT",
+}
+
+# SMB Extended File Attributes MS-CIFS p.46
+SMB_EXT_ATTR_READONLY           = 0x00000001
+SMB_EXT_ATTR_HIDDEN             = 0x00000002
+SMB_EXT_ATTR_SYSTEM             = 0x00000004
+SMB_EXT_ATTR_DIRECTORY          = 0x00000010
+SMB_EXT_ATTR_ARCHIVE            = 0x00000020
+SMB_EXT_ATTR_NORMAL             = 0x00000080
+SMB_EXT_ATTR_TEMPORARY          = 0x00000100
+SMB_EXT_ATTR_COMPRESSED         = 0x00000800
+
+SMB_ExtFileAttributes = {
+    SMB_EXT_ATTR_READONLY       : "READONLY",
+    SMB_EXT_ATTR_HIDDEN         : "HIDDEN",      
+    SMB_EXT_ATTR_SYSTEM         : "SYSTEM",
+    SMB_EXT_ATTR_DIRECTORY      : "DIRECTORY",
+    SMB_EXT_ATTR_ARCHIVE        : "ARCHIVE",
+    SMB_EXT_ATTR_NORMAL         : "NORMAL",
+    SMB_EXT_ATTR_TEMPORARY      : "TEMPORARY",
+    SMB_EXT_ATTR_COMPRESSED     : "COMPRESSED",
+}
+
+
+
+
+
 
 DCERPC_PacketTypes = {
     11:"Bind",
@@ -388,6 +519,23 @@ SMB_CreateFlags = {
     SMB_CF_REQ_BATCH_OPLOCK :'REQ_BATCH_OPLOCK',
     SMB_CF_TARGET_DIRECTORY :'TARGET_DIRECTORY',
 }
+
+# File Search Attributes (Trans2 FIND FIRST2)
+SMB_SA_READONLY     = 0x0100 
+SMB_SA_HIDDEN       = 0x0200 
+SMB_SA_SYSTEM       = 0x0400 
+SMB_SA_DIRECTORY    = 0x1000 
+SMB_SA_ARCHIVE      = 0x2000 
+
+SMB_SearchAttributes = {
+    SMB_SA_READONLY     : "READONLY", 
+    SMB_SA_HIDDEN       : "HIDDEN", 
+    SMB_SA_SYSTEM       : "SYSTEM",
+    SMB_SA_DIRECTORY    : "DIRECTORY",
+    SMB_SA_ARCHIVE      : "ARCHIVE",
+}
+
+
 
 # File Attribute Encoding
 SMB_FA_READONLY   = 0x0001 # Read only file
@@ -437,15 +585,37 @@ SMB_FILE_SHARE_READ  = 0x00000001
 # Other open operations can be performed on the file for write access.
 SMB_FILE_SHARE_WRITE = 0x00000002
 # Other open operations can be performed on the file for delete access.
-SMB_FILE_SHARE_DELET = 0x00000004
+SMB_FILE_SHARE_DELETE = 0x00000004
 
 
 SMB_ShareAccess = {
     SMB_FILE_NO_SHARE     :"NO_SHARE",
     SMB_FILE_SHARE_READ   :"READ",
     SMB_FILE_SHARE_WRITE  :"WRITE",
-    SMB_FILE_SHARE_DELET  :"DELETE"
+    SMB_FILE_SHARE_DELETE :"DELETE"
 }
+
+# CreateDispositions 
+# have different meaning in response MS-CIFS p.349
+SMB_CREATDISP_FILE_SUPERSEDE        = 0x00000000
+SMB_CREATDISP_FILE_OPEN             = 0x00000001
+SMB_CREATDISP_FILE_CREATE           = 0x00000002
+# in resp: file has been overwritten
+SMB_CREATDISP_FILE_OPEN_IF          = 0x00000003
+# in resp: file already exists
+SMB_CREATDISP_FILE_OVERWRITE        = 0x00000004
+# in resp: file does not exist
+SMB_CREATDISP_FILE_OVERWRITE_IF     = 0x00000005
+
+SMB_CreateDispositions = {
+    SMB_CREATDISP_FILE_SUPERSEDE    : "FILE_SUPERSEDE",
+    SMB_CREATDISP_FILE_OPEN         : "FILE_OPEN",
+    SMB_CREATDISP_FILE_CREATE       : "FILE_CREATE",
+    SMB_CREATDISP_FILE_OPEN_IF      : "FILE_OPEN_IF",
+    SMB_CREATDISP_FILE_OVERWRITE    : "FILE_OVERWRITE",
+    SMB_CREATDISP_FILE_OVERWRITE_IF : "FILE_OVERWRITE_IF"
+}
+
 
 # CreateOptions
 SMB_CREATOPT_NONE                   =(0)
@@ -496,10 +666,10 @@ SMB_CreateOptions = {
 
 # CreateFlags
 SMB_CREATEFL_NONE                = (0)
-SMB_CREATEFL_EXCL_OPLOCK         = (1<<2)
-SMB_CREATEFL_BATCH_OPLOCK        = (1<<3)
-SMB_CREATEFL_CREATE_DIRECTORY    = (1<<4)
-SMB_CREATEFL_EXT_RESP            = (1<<5)
+SMB_CREATEFL_EXCL_OPLOCK         = (1<<1)
+SMB_CREATEFL_BATCH_OPLOCK        = (1<<2)
+SMB_CREATEFL_CREATE_DIRECTORY    = (1<<3)
+SMB_CREATEFL_EXT_RESP            = (1<<4)
 
 SMB_CreateFlags = {
     SMB_CREATEFL_NONE             : "NONE",
@@ -632,6 +802,10 @@ class SMBNullField(StrField):
             return UnicodeNullField.size(self, pkt, s)
         else:
             return StrNullField.size(self, pkt, s)
+
+
+
+
 
 
 class UUIDField(StrFixedLenField):
@@ -779,7 +953,7 @@ class SMB_Sessionsetup_ESEC_AndX_Request(Packet):
             "SecurityBlobLength", None, fmt='<H', length_of="SecurityBlob"),
         LEIntField("Reserved",0),
         #        XLEIntField("Capabilities",0x05),
-        FlagsField("Capabilties", 0x8000e3fd, -32, SMB_Negotiate_Capabilities),
+        FlagsField("Capabilities", 0x8000e3fd, -32, SMB_Negotiate_Capabilities),
         LEShortField("ByteCount",35),
         StrLenField(
             "SecurityBlob", "Pass", length_from=lambda x:x.SecurityBlobLength),
@@ -1033,16 +1207,24 @@ class SMB_Treeconnect_AndX_Response2(Packet):
         LEShortField("ByteCount",0),
     ]
 
+class SMB_Error_Response(Packet):
+    name="SMB Error Response"
+    fields_desc = [
+        ByteField("WordCount",0),
+        LEShortField("ByteCount",0),
+    ]
+
+
 # page 76
 class SMB_NTcreate_AndX_Request(Packet):
     name = "SMB NTcreate AndX Request"
     fields_desc = [
-        ByteField("WordCount",4),
+        ByteField("WordCount",24),
         ByteEnumField("AndXCommand",0xff,SMB_Commands),
         ByteField("Reserved1",0),
         LEShortField("AndXOffset",0),
         ByteField("Reserved2",0),
-        LEShortField("FilenameLen",0x2),
+        LEShortField("FileNameLen",0x2),
         FlagsField("CreateFlags", 0, -32, SMB_CreateFlags),
         #        XLEIntField("CreateFlags",0),
         XLEIntField("RootFID",0),
@@ -1061,8 +1243,8 @@ class SMB_NTcreate_AndX_Request(Packet):
         #        FixGapField("FixGap", b'\0'),
         ConditionalField(StrFixedLenField(
             "Padding", b'\0', 1), lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
-        SMBNullField(
-            "Filename","\\lsarpc", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+        SMBNullField("FileName","\\lsarpc", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+        #StrLenField("FileName", None, length_from=lambda pkt:pkt.FileNameLen),
         StrFixedLenField(
             "Extrabytes", b'', length_from=lambda x:x.lengthfrom_Extrabytes())
     ]
@@ -1070,7 +1252,7 @@ class SMB_NTcreate_AndX_Request(Packet):
         x = self.ByteCount
         if hasattr(self,'Padding') and self.Padding != None:
             x -= len(self.Padding)
-        x -= len(self.Filename)
+        x -= len(self.FileName)
         return x
 
 # page 77
@@ -1078,14 +1260,14 @@ class SMB_NTcreate_AndX_Request(Packet):
 class SMB_NTcreate_AndX_Response(Packet):
     name="SMB NTcreate AndX Response"
     smb_cmd = SMB_COM_NT_CREATE_ANDX #0xa2
-    strange_packet_tail = bytes.fromhex(
-        '000000000000000000000000000000000000000000009b0112009b0112000000')
+    #strange_packet_tail = bytes.fromhex(
+    #    '000000000000000000000000000000000000000000009b0112009b0112000000')
     fields_desc = [
-        ByteField("WordCount",42),
+        ByteField("WordCount",34),
         ByteEnumField("AndXCommand",0xff,SMB_Commands),
         ByteField("Reserved1",0),
         LEShortField("AndXOffset",0),
-        ByteField("OplockLevel",0),
+        XByteField("OpLockLevel",0),
         XLEShortField("FID",0x4000),
         XLEIntField("CreateAction",1),
         NTTimeField("Created",0),
@@ -1093,15 +1275,58 @@ class SMB_NTcreate_AndX_Response(Packet):
         NTTimeField("LastModified",0),
         NTTimeField("Change",0),
         FlagsField("FileAttributes", 0x80, -32, SMB_FileAttributes),
-        LELongField("AllocationSize",4096),
+        LELongField("AllocationSize",0),
         LELongField("EndOfFile",0),
-        LEShortField("FileType",2),
-        XLEShortField("IPCstate",0x5ff),
+        #LEShortField("FileType",2),
+        LEShortEnumField("FileType", 0, SMB_ResourceTypes),
+        XLEShortField("IPCstate",0x0007),
         ByteField("IsDirectory",0),
         LEShortField("ByteCount",0),
-        StrLenField("FixStrangeness", strange_packet_tail,
-                    length_from=lambda x:len(x.strange_packet_tail)),
+    #    StrLenField("FixStrangeness", strange_packet_tail,
+    #                length_from=lambda x:len(x.strange_packet_tail)),
     ]
+
+class SMB_NTcreate_AndX_Response_Extended(Packet):
+    name = "SMB NTcreate AndX Response Extended"
+    smb_cmd = SMB_COM_NT_CREATE_ANDX
+    fields_desc = [
+        ByteField("WordCount", 0x2a),
+        ByteEnumField("AndXCommand",0xff,SMB_Commands),
+        ByteField("Reserved1",0),
+        LEShortField("AndXOffset",0),
+        XByteField("OpLockLevel",0),
+        XLEShortField("FID",0x4000),
+        XLEIntField("CreateAction",1),
+        NTTimeField("Created",0),
+        NTTimeField("LastAccess",0),
+        NTTimeField("LastModified",0),
+        NTTimeField("Change",0),
+        FlagsField("FileAttributes", 0x80, -32, SMB_FileAttributes),
+        LELongField("AllocationSize",0),
+        LELongField("EndOfFile",0),
+        #LEShortField("FileType",2),
+        LEShortEnumField("FileType", 0, SMB_ResourceTypes),
+        XLEShortField("IPCstate",0x0007),
+        ByteField("IsDirectory",0),
+        StrFixedLenField("VolumeGUID", b"\0", length=16),
+        LELongField("FileId", 0),
+        LEIntField("MaximalAccessRights", 0x001f01ff),
+        LEIntField("MaximalAccessRights", 0x001f01ff),
+        LEShortField("ByteCount",0),
+    #    StrLenField("FixStrangeness", strange_packet_tail,
+    #                length_from=lambda x:len(x.strange_packet_tail)),
+    ]
+
+
+
+class SMB_NTcreate_AndX_Response_ERROR(Packet):
+    name="SMB NTcreate AndX Response"
+    smb_cmd = SMB_COM_NT_CREATE_ANDX #0xa2
+    fields_desc = [
+        ByteField("WordCount",0),
+        LEShortField("ByteCount",0),
+    ]
+
 
 # page 83
 # the manual says there is a Padding Byte right after the bytecount
@@ -1122,12 +1347,12 @@ class SMB_Write_AndX_Request(Packet):
         LEShortField("DataLenHigh",0), #multiply with 64k
         LEShortField("DataLenLow",0),
         LEShortField("DataOffset",0),
-        ConditionalField(IntField("HighOffset",0), lambda x:x.WordCount==14),
+        ConditionalField(LEIntField("HighOffset",0), lambda x:x.WordCount==14),
         LEShortField("ByteCount",  0),
         ConditionalField(LEShortField("PipeWriteLen", 0), lambda x:
                          x.WriteMode & SMB_WM_MSGSTART and x.WriteMode & SMB_WM_WRITERAW),
-        StrLenField("Padding", None, length_from=lambda x:
-                    x.ByteCount-((x.DataLenHigh<<16)|x.DataLenLow)),
+        #StrLenField("Padding", None, length_from=lambda x: x.ByteCount-((x.DataLenHigh<<16)|x.DataLenLow)),
+        ByteField("Pad", 0),
         StrLenField("Data", b"", length_from=lambda x:(
             (x.DataLenHigh<<16)|x.DataLenLow)),
     ]
@@ -1184,6 +1409,24 @@ class SMB_Write_Response(Packet):
     ]
 
 
+class SMB_Rename_Request(Packet):
+    name = "SMB Rename Request"
+    smb_cmd = SMB_COM_RENAME
+    fields_desc = [
+        ByteField("WordCount", 1),
+        FlagsField("SearchAttributes", 0, -16, SMB_FileAttributes),
+        LEShortField("ByteCount", 0),
+        ByteField("BufferFormat", 4),
+        SMBNullField("OldFileName", b"\x00", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+        ByteField("BufferFormat2", 4),
+        ByteField("Reserved", 0),
+        SMBNullField("NewFileName", b"\x00", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+    ]
+
+
+
+
+
 # page 82
 # I have no idea why we need the FixGap's
 class SMB_Read_AndX_Request(Packet):
@@ -1197,7 +1440,7 @@ class SMB_Read_AndX_Request(Packet):
         LEIntField("Offset",0),
         LEShortField("MaxCountLow",0),
         LEShortField("MinCount",0),
-        IntField("FixGap1", 0xffffffff),
+        IntField("Timeout", 0xffffffff),
         LEShortField("Remaining",0),
         ConditionalField(
             LEIntField("HighOffset", 0), lambda x:x.WordCount==12),
@@ -1238,7 +1481,7 @@ class SMB_Trans_Request(Packet):
         XLEShortField("Flags",0),
         LEIntField("Timeout",0),
         ShortField("Reserved2",0),
-        FieldLenField("ParamCount", 0, fmt='<H', count_of="Params"),
+        FieldLenField("ParamCount", 0, fmt='<H', count_of="Param"),
         LEShortField("ParamOffset",0),
         LEShortField("DataCount",0),
         LEShortField("DataOffset",0),
@@ -1316,12 +1559,311 @@ class SMB_Trans_Response_Simple(Packet):
         LEShortField("ByteCount",0),
     ]
 
+class SMB_STRUCT_QUERY_FULL_FS_SIZE_INFO(Packet):
+    name = "SMB Query Full FS Size Info"
+    fields_desc = [
+        LELongField("TotalAllocationUnits", 0),
+        LELongField("CallerFreeAllocationUnits", 0),
+        LELongField("ActualFreeAllocationUnits", 0),
+        LEIntField("SectorsPerAllocationUnit", 0),
+        LEIntField("BytesPerSector", 0),
+        ]
+
+class SMB_STRUCT_QUERY_FS_VOLUME_INFO(Packet):
+    name = "SMB Query FS Volume Info"
+    fields_desc = [
+        LELongField("VolumeCreationTime", 0),
+        LEIntField("SerialNumber", 132),
+        FieldLenField("VolumeLabelSize", None, fmt="<I", length_of="VolumeLabel"),
+        LEShortField("Reserved", 0),
+        StrField("VolumeLabel", ""),
+    ]
+
+
+class SMB_STRUCT_QUERY_FS_SIZE_INFO(Packet):
+    name = "SMB Query FS Size Info"
+    fields_desc = [
+        LELongField("TotalAllocationUnits", 0),
+        LELongField("TotalFreeAllocationUnits", 0),
+        LEIntField("SectorsPerAllocationUnit", 0),
+        LEIntField("BytesPerSector", 0),
+    ]
+        
+
+class SMB_STRUCT_QUERY_FS_DEVICE_INFO(Packet):
+    name = "SMB Query FS Device Info"
+    fields_desc =  [
+        LEIntField("DeviceType", 0),
+        LEIntField("DeviceCharacteristics", 0),
+    ]
+
+# FileSystemAttributes
+FILE_CASE_SENSITIVE_SEARCH  = 0x00000001
+FILE_CASE_PRESERVED_NAMES   = 0x00000002
+FILE_UNICODE_ON_DISK        = 0x00000004
+FILE_PERSISTENT_ACLS        = 0x00000008
+FILE_FILE_COMPRESSION       = 0x00000010
+FILE_VOLUME_IS_COMPRESSED   = 0x00008000
+
+class SMB_STRUCT_QUERY_FS_ATTRIBUTE_INFO(Packet):
+    name = "SMB Query FS Attribute Info"
+    fields_desc = [
+        LEIntField("FileSystemAttributes", 0), 
+        LEIntField("MaxFileNameLengthInBytes", 255), 
+        FieldLenField("LengthOfFileSystemName", None, fmt="<I", length_of="FileSystemName"), 
+        StrLenField("FileSystemName", None),
+    ]
+
+#class SMB_STRUCT_INFO_ALLOCATION(Packet):
+#class SMB_STRUCT_INFO_VOLUME(Packet):
+# MS-CIFS p.454
+class SMB_STRUCT_FIND_FILE_BOTH_DIRECTORY_INFO(Packet):
+    name = "SMB Find File Both Directory Info"
+    fields_desc = [
+        #FieldLenField("NextEntryOffset", None, fmt="<I", length_of="FileName", adjust = lambda pkt,x:x+94 if pkt.hasNext else 0),
+        LEIntField("NextEntryOffset", 0),
+        LEIntField("FileIndex", 0),
+        LELongField("CreationTime", 0),
+        LELongField("LastAccessTime", 0),
+        LELongField("LastWriteTime", 0),
+        LELongField("LastChangeTime", 0),
+        LELongField("EndOfFile", 0),
+        LELongField("AllocationSize", 0),
+        FlagsField("ExtFileAttributes", SMB_EXT_ATTR_NORMAL, -32, SMB_ExtFileAttributes),
+        FieldLenField("FileNameLength", None, fmt="<I", length_of="FileName"),
+        LEIntField("EaSize", 0),
+        ByteField("ShortNameLength", 0),
+        ByteField("Reserved", 0),
+        StrFixedLenField("ShortName", 0, length=24),
+        #SMBNullField("ShortName", None, utf16=lambda x:x.getlayer(SMB_Header).Flags2 & SMB_FLAGS2_UNICODE),
+        StrField("FileName", None),# length_from=lambda x:x.FileNameLength),# utf16=lambda x:x.getlayer(SMB_Header).Flags2 & SMB_FLAGS2_UNICODE),
+    ]
+
+##
+##   Trans2 SET FILE/PATH Information Level Codes and data structures
+##  
+##      MS-CIFS p.66
+##      MS-CIFS p
+##
+
+#SMB_INFO_STANDARD               = 0x0001
+SMB_INFO_SET_EAS                = 0x0002
+SMB_SET_FILE_BASIC_INFO         = 0x0101
+SMB_SET_FILE_DISPOSITION_INFO   = 0x0102
+SMB_SET_FILE_ALLOCATION_INFO    = 0x0103
+SMB_SET_FILE_END_OF_FILE_INFO   = 0x0104
+
+class SMB_Trans2_SET_FILE_INFO_Request(Packet):
+    name = "SMB Trans2 SET FILE INFO Request"
+    fields_desc = [
+        #MultiFieldLenField("ByteCount", None, fmt='<H', length_of=("Name","Pad", "FID",  "InformationLevel", "Reserved", "Pad1", "Data")),
+        LEShortField("ByteCount", 0),
+        ByteField("Name", 0),
+        StrFixedLenField("Pad", b"", length_from=lambda x:x.lengthfrom_Pad()),
+        XLEShortField("FID", 0x4000),
+        XLEShortField("InformationLevel", 0),
+        LEShortField("Reserved", 0),
+        StrFixedLenField("Pad1", b"", length_from=lambda x:x.lengthfrom_Pad1()),
+        #PacketListField("Data", None, Packet),
+    ]
+    def lengthfrom_Pad(self):
+        if self.underlayer.ParamOffset == 0:
+            return 0
+        pad = self.underlayer.ParamOffset - self.underlayer.size() 
+        pad -= 32 # SMB header
+        pad -= 2 # ByteCount in SMB Data
+        pad -= 1 # Name in SMB Data
+        return pad
+
+    def lengthfrom_Pad1(self):
+       if self.underlayer.DataOffset == 0:
+           return 0
+       pad = self.underlayer.DataOffset
+       pad -= self.underlayer.ParamOffset
+       pad -= self.underlayer.ParamCount
+       return pad
+
+# only supports the data structs from LANMAN2.0
+class SMB_Trans2_SET_PATH_INFO_Request(Packet):
+    name = "SMB Trans2 SET PATH INFO Request"
+    fields_desc = [
+        MultiFieldLenField("ByteCount", None, fmt='<H', length_of=("Name","Pad", "InformationLevel", "Reserved", "FileName", "Pad1", "Data")),
+        ByteField("Name", 0),
+        StrFixedLenField("Pad", b"", length_from=lambda x:x.lengthfrom_Pad()),
+        XLEShortField("InformationLevel", 0),
+        LEIntField("Reserved", 0),
+        SMBNullField("FileName", None),
+        StrFixedLenField("Pad1", b"", length_from=lambda x:x.lengthfrom_Pad1()),
+        PacketListField("Data", None, Packet),
+    ]
+    def lengthfrom_Pad(self):
+        if self.underlayer.ParamOffset == 0:
+            return 0
+        pad = self.underlayer.ParamOffset - self.underlayer.size() 
+        pad -= 32 # SMB header
+        pad -= 2 # ByteCount in SMB Data
+        pad -= 1 # Name in SMB Data
+        return pad
+
+    def lengthfrom_Pad1(self):
+       if self.underlayer.DataOffset == 0:
+           return 0
+       pad = self.underlayer.DataOffset
+       pad -= self.underlayer.ParamOffset
+       pad -= self.underlayer.ParamCount
+       return pad
+
+
+
+
+class SMB_SET_FILE_BASIC_INFO_STRUCT(Packet):
+    name = "SMB Set File Basic Info"
+    infoLvl = SMB_SET_FILE_BASIC_INFO
+    fields_desc = [
+        LELongField("CreationTime", 0),
+        LELongField("LastAccessTime", 0),
+        LELongField("LastWriteTime", 0),
+        LELongField("ChangeTime", 0),
+        FlagsField("ExtFileAttributes", 0, -32, SMB_ExtFileAttributes),
+        LEIntField("Reserved", 0),
+    ]
+
+class SMB_SET_FILE_DISPOSITION_INFO_STRUCT(Packet):
+    name = "SMB Set File Disposition Info"
+    infoLvl = SMB_SET_FILE_DISPOSITION_INFO
+    fields_desc = [
+        ByteField("DeletePending", 0),  # 0x01 = should be deleted
+    ]
+
+class SMB_SET_FILE_ALLOCATION_INFO_STRUCT(Packet):
+    name = "SMB Set File Allocation Info"
+    infoLvl = SMB_SET_FILE_ALLOCATION_INFO
+    fields_desc = [
+        LELongField("AllocationSize", 0),
+    ]
+
+class SMB_INFO_SET_EAS_STRUCT(Packet):
+    name = "SMB Set File End Of File Info"
+    infoLvl = SMB_SET_FILE_END_OF_FILE_INFO
+    fields_desc = [
+        LELongField("EndOfFile", 0),
+    ]
+ 
+ 
+class SMB_SET_FILE_END_OF_FILE_INFO_STRUCT(Packet):
+    name = "SMB Set File End Of File Info"
+    infoLvl = SMB_SET_FILE_END_OF_FILE_INFO
+    fields_desc = [
+        LELongField("EndOfFile", 0),
+    ]
+ 
+class SMB_STRUCT_INFO_STANDARD(Packet):
+    name = "SMB Info Standard"
+    fields_desc = [
+        LEIntField("ResumeKey", 0),
+        LEShortField("CreationDate", 0),
+        LEShortField("CreationTime", 0),
+        LEShortField("LastAccessDate", 0),
+        LEShortField("LastAccessTime", 0),
+        LEShortField("LastWriteDate", 0),
+        LEShortField("LastWriteTime", 0),
+        LEIntField("FileDataSize", 0),
+        LEIntField("AllocationSize", 0),
+        FlagsField("FileAttributes", 0, -16, SMB_FileAttributes),
+        ByteField("FileNameLength", 0),
+        StrField("FileName", None),
+    ]
+
+class SMB_STRUCT_INFO_QUERY_EA_SIZE(Packet):
+    name = "SMB Info Query EA Size"
+    fields_desc = [
+        LEShortField("CreationDate", 0),
+        LEShortField("CreationTime", 0),
+        LEShortField("LastAccessDate", 0),
+        LEShortField("LastAccessTime", 0),
+        LEShortField("LastWriteDate", 0),
+        LEShortField("LastWriteTime", 0),
+        LEIntField("FileDataSize", 0),
+        LEIntField("AllocationSize", 0),
+        FlagsField("FileAttributes", 0, -16, SMB_FileAttributes),
+        LEIntField("EaSize", None),
+    ]
+
+
+class SMB_STRUCT_QUERY_FILE_STANDARD_INFO(Packet):
+    name = "SMB Query File Standard Info"
+    fields_desc = [
+        LELongField("AllocationSize", 0),
+        LELongField("EndOfFile", 0),
+        LEIntField("NumberOfLinks", 0),
+        ByteField("DeletePending", 0),
+        ByteField("Directory", 0),
+        LEShortField("Reserved", 0),
+    ]
+
+class SMB_STRUCT_QUERY_FILE_BASIC_INFO(Packet):
+    name = "SMB Query File Basic Info"
+    fields_desc = [
+        LELongField("CreationTime", 0),#363011174825242212),
+        LELongField("LastAccessTime", 0),#363011174825242212),
+        LELongField("LastWriteTime", 0),#363011174825242212),
+        LELongField("LastChangeTime", 0),#363011174825242212),
+        FlagsField("ExtFileAttributes", 0, -32, SMB_ExtFileAttributes),
+        LEIntField("Reserved", 0),
+    ]
+
+class SMB_STRUCT_QUERY_FILE_EA_INFO(Packet):
+    name = "SMB Query File EA Info"
+    fields_desc = [
+        LEIntField("EaSize", 0),
+    ]
+
+class SMB_STRUCT_QUERY_FILE_NAME_INFO(Packet):
+    name = "SMB Query File EA Info"
+    fields_desc = [
+        FieldLenField("FileNameLength", None, length_of="FileName", fmt="<I"),
+        StrField("FileName", None),
+    ]
+
+
+class SMB_STRUCT_QUERY_FILE_STREAM_INFO(Packet):
+    name = "SMB Query File Stream Info"
+    fields_desc = [
+        LEIntField("NextEntryOffset", 0),
+        FieldLenField("StreamNameLength", None, length_of="StreamName", fmt="<I"),
+        LELongField("StreamSize", 0),
+        LELongField("StreamAllocationSize", 0),
+        StrLenField("StreamName", None),
+    ]
+
+
+class SMB_STRUCT_QUERY_FILE_COMPRESSION_INFO(Packet):
+    name = "SMB Query File Compression Info"
+    fields_desc = [
+        LELongField("CompressedFileSize", 0),
+        LEShortField("CompressionFormat", 0),
+        ByteField("CompressionUnitShift", 0),
+        ByteField("ChunkShift", 0),
+        ByteField("ClusterShift", 0),
+        ByteField("Reserved1", 0),
+        ByteField("Reserved2", 0),
+        ByteField("Reserved3", 0),
+    ]
+
+class SMB_STRUCT_QUERY_FILE_INTERNAL_INFO(Packet):
+    name = "SMB Query File Internal Info"
+    fields_desc = [
+        LELongField("IndexNumber", 0x000b00000000b02a),
+    ]
+
+
+
 # page 45
 class SMB_Trans2_Request(Packet):
     name = "SMB Trans2 Request"
     smb_cmd = SMB_COM_TRANSACTION2 # 0x32
     fields_desc = [
-        ByteField("WordCount",14),
+        ByteField("WordCount",15),
         LEShortField("TotalParamCount",0),
         LEShortField("TotalDataCount",0),
         LEShortField("MaxParamCount",0),
@@ -1331,7 +1873,8 @@ class SMB_Trans2_Request(Packet):
         XLEShortField("Flags",0),
         LEIntField("Timeout",0),
         ShortField("Reserved2",0),
-        FieldLenField("ParamCount", 0, fmt='<H', count_of="Params"),
+        #FieldLenField("ParamCount", 0, fmt='<H', 1),#count_of="Param"),
+        LEShortField("ParamCount", 0),#, fmt='<H', 1),#count_of="Param"),
         LEShortField("ParamOffset",0),
         LEShortField("DataCount",0),
         LEShortField("DataOffset",0),
@@ -1340,83 +1883,214 @@ class SMB_Trans2_Request(Packet):
         #        FieldListField("Setup", 0, ShortField("", 0), count_from = lambda pkt: pkt.SetupCount),
         FieldListField("Setup", 0, LEShortEnumField(
             "",0,SMB_Trans2_Commands), count_from = lambda pkt: pkt.SetupCount),
-        LEShortField("ByteCount",0),
-        #        StrNullField("Name", b""),
-        StrFixedLenField(
-            "Pad", b'\0', length_from=lambda x:x.lengthfrom_Pad()),
-        FieldListField(
-            "Param", 0, XByteField("", 0), count_from = lambda pkt: pkt.ParamCount),
-        StrFixedLenField(
-            "Pad1", b"", length_from=lambda x:x.lengthfrom_Pad1()),
-        StrFixedLenField("Data", b"", length_from=lambda pkt: pkt.DataCount),
+    ]
+
+
+# TRANS2_QUERY_FILE_INFORMATION (0x0007)
+# MS-CIFS p.418
+class SMB_Trans2_QUERY_FILE_INFO_Request(Packet):
+    name = "SMB Trans2 QUERY FILE INFO Request"
+    fields_desc = [
+        MultiFieldLenField("ByteCount", None, fmt='<H', length_of=("Name","Pad", "FID",  "InformationLevel", "Pad1", "GetEAList")),
+        ByteField("Name", 0),
+        StrFixedLenField("Pad", b"", length_from=lambda x:x.lengthfrom_Pad()),
+        XLEShortField("FID", 0x4000),
+        XLEShortField("InformationLevel", 0),
+        StrFixedLenField("Pad1", b"", length_from=lambda x:x.lengthfrom_Pad1()),
+        ConditionalField(StrLenField("GetEAList", b"", length_from=lambda x: x.underlayer.DataCount), lambda x:x.InformationLevel==SMB_INFO_QUERY_EAS_FROM_LIST)
     ]
     def lengthfrom_Pad(self):
-        if self.ParamOffset == 0:
+        if self.underlayer.ParamOffset == 0:
             return 0
-        r = self.underlayer.size()    # underlayer size removed
-        r += 5                        # 5 byte vars
-        r += 11*2                    # 11 words
-        r += 4                        # 1 int
-        r += self.SetupCount*2        # SetupCount words
-        return self.ParamOffset - r
+        pad = self.underlayer.ParamOffset - self.underlayer.size() 
+        pad -= 32 # SMB header
+        pad -= 2 # ByteCount in SMB Data
+        pad -= 1 # Name in SMB Data
+        return pad
 
     def lengthfrom_Pad1(self):
-        if self.DataOffset == 0:
-            return 0
-        r = self.underlayer.size()    # underlayer size removed
-        r += 5                        # 5 byte vars
-        r += 11*2                    # 11 words
-        r += 4                        # 1 int
-        r += self.SetupCount*2        # SetupCount words
-        r += len(self.Pad)            # Pad length
-        r += self.ParamCount        # ParamCount arguments
-        return self.DataOffset - r
+       if self.underlayer.DataOffset == 0:
+           return 0
+       pad = self.underlayer.DataOffset
+       pad -= self.underlayer.ParamOffset
+       pad -= self.underlayer.ParamCount
+       return pad
 
-
-#        if r % 2 == 0:
-#            return r % 4
-#        else:
-#            return r % 2
-
-class SMB_Trans2_FIND_FIRST2_Response(Packet):
-    name = "SMB Trans2 FIND_FIRST2 Response"
-    smb_cmd = SMB_COM_TRANSACTION2 #0x32
+class SMB_Trans2_QUERY_PATH_INFO_Request(Packet):
+    name = "SMB Trans2 QUERY PATH INFO Request"
     fields_desc = [
-        ByteField("WordCount",10),
-        LEShortField("TotalParamCount",10),
-        LEShortField("TotalDataCount",196),
-        LEShortField("Reserved1",0),
-        LEShortField("ParamCount",10),
-        LEShortField("ParamOffset",56),
-        LEShortField("ParamDisplacement",0),
-        LEShortField("DataCount",196),
-        LEShortField("DataOffset",68),
-        LEShortField("DataDisplacement",0),
-        ByteField("SetupCount",0),
-        ByteField("Reserved2",0),
-        LEShortField("ByteCount",209),
-        ByteField("Pad1",0),
-        LEShortField("SearchID",0xfffd),
-        LEShortField("SearchCount",2),
-        LEShortField("EndofSearch",1),
-        LEShortField("ErrorOffset",0),
-        LEShortField("LastNameOffset",96),
-        LEShortField("Pad2",0),
-#         really ugly but this will works
-        StrFixedLenField("Data", b"\x60\x00\x00\x00\x00\x00\x00\x00\x39\xa3\xda\x08\x01\xd6\xd2\x01", 16),
-        StrFixedLenField("Data1", b"\xba\xb0\x6e\x0a\x01\xd6\xd2\x01\x39\xa3\xda\x08\x01\xd6\xd2\x01", 16),
-        StrFixedLenField("Data2", b"\x39\xa3\xda\x08\x01\xd6\xd2\x01\x00\x00\x00\x00\x00\x00\x00\x00", 16),
-        StrFixedLenField("Data3", b"\x00\x00\x00\x00\x00\x00\x00\x00\x10\x00\x00\x00\x02\x00\x00\x00", 16),
-        StrFixedLenField("Data4", b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 16),
-        StrFixedLenField("Data5", b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x2e\x00", 16),
-        StrFixedLenField("Data6", b"\x64\x00\x00\x00\x00\x00\x00\x00\xc2\xaf\xca\x06\xcc\xd5\xd2\x01", 16),
-        StrFixedLenField("Data7", b"\x9d\x76\x46\x90\xcc\xd5\xd2\x01\xc2\xaf\xca\x06\xcc\xd5\xd2\x01", 16),
-        StrFixedLenField("Data8", b"\xc2\xaf\xca\x06\xcc\xd5\xd2\x01\x00\x00\x00\x00\x00\x00\x00\x00", 16),
-        StrFixedLenField("Data9", b"\x00\x00\x00\x00\x00\x00\x00\x00\x10\x00\x00\x00\x03\x00\x00\x00", 16),
-        StrFixedLenField("Data10", b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 16),
-        StrFixedLenField("Data11", b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x2e\x2e", 16),
-        StrFixedLenField("Data12", b"\x00\x00\x00\x00", 4),
+        MultiFieldLenField("ByteCount", None, fmt='<H', length_of=("Name","Pad", "InformationLevel", "Reserved", "FileName", "Pad1", "GetEAList")),
+        ByteField("Name", 0),
+        StrFixedLenField("Pad", b"", length_from=lambda x:x.lengthfrom_Pad()),
+        XLEShortField("InformationLevel", 0),
+        LEIntField("Reserved", 0),
+        StrField("FileName", 0),
+        StrFixedLenField("Pad1", b"", length_from=lambda x:x.lengthfrom_Pad1()),
+        ConditionalField(StrLenField("GetEAList", b"", length_from=lambda x: x.underlayer.DataCount), lambda x:x.InformationLevel==SMB_INFO_QUERY_EAS_FROM_LIST)
     ]
+    def lengthfrom_Pad(self):
+        if self.underlayer.ParamOffset == 0:
+            return 0
+        pad = self.underlayer.ParamOffset - self.underlayer.size() 
+        pad -= 32 # SMB header
+        pad -= 2 # ByteCount in SMB Data
+        pad -= 1 # Name in SMB Data
+        return pad
+
+    def lengthfrom_Pad1(self):
+       if self.underlayer.DataOffset == 0:
+           return 0
+       pad = self.underlayer.DataOffset
+       pad -= self.underlayer.ParamOffset
+       pad -= self.underlayer.ParamCount
+       return pad
+
+
+
+#
+# MS-CIFS p.411
+#
+class SMB_Trans2_QUERY_FS_INFORMATION_Request(Packet):
+    name = "SMB Trans2 QUERY FS INFORMATION Request"
+    fields_desc = [
+        MultiFieldLenField("ByteCount", None, fmt='<H', length_of=("Name","Pad", "InformationLevel", "Pad1")),
+        ByteField("Name", 0),
+        StrFixedLenField("Pad", b"", length_from=lambda x:x.lengthfrom_Pad()),
+        #XLEShortField("InformationLevel", 0),
+        LEShortEnumField("InformationLevel", 0, SMB_QueryFSInfoLvl),
+        StrFixedLenField("Pad1", b"", length_from=lambda x:x.lengthfrom_Pad1()),
+    ]
+    def lengthfrom_Pad(self):
+        if self.underlayer.ParamOffset == 0:
+            return 0
+        pad = self.underlayer.ParamOffset - self.underlayer.size() 
+        pad -= 32 # SMB header
+        pad -= 2 # ByteCount field in SMB Data
+        pad -= 1 # Name field in SMB Data
+        return pad
+
+    def lengthfrom_Pad1(self):
+       if self.underlayer.DataOffset == 0:
+           return 0
+       pad = self.underlayer.DataOffset
+       pad -= self.underlayer.ParamOffset
+       pad -= self.underlayer.ParamCount
+       return pad 
+
+
+# MS-CIFS p.403
+#
+class SMB_Trans2_FIND_FIRST2_Request(Packet):
+    name = "SMB Trans2 FIND FIRST2 Request"
+    smb_cmd = SMB_COM_TRANSACTION2
+    fields_desc =[
+        MultiFieldLenField("ByteCount", None, fmt='<H', length_of=("Name","Pad","SearchAttributes", "SearchCount", "Flags", "InformationLevel", "SearchStorageType", "FileName", "Pad1", "GetEAList")),
+        ByteField("Name", 0),
+        StrFixedLenField("Pad", b"", length_from=lambda x:x.lengthfrom_Pad()),
+        FlagsField("SearchAttributes", 0, -16, SMB_SearchAttributes),
+        LEShortField("SearchCount",0),
+        FlagsField("Flags", 0, -16, SMB_Trans2_FIND_FIRST2_Flags),
+        XLEShortField("InformationLevel", 0),
+        LEIntField("SearchStorageType",0),
+        StrFixedLenField("FileName", b"", length_from=lambda x: x.underlayer.ParamCount-12),
+        StrFixedLenField("Pad1", b"", length_from=lambda x:x.lengthfrom_Pad1()),
+        ConditionalField(StrLenField("GetEAList", b"", length_from=lambda x: x.underlayer.DataCount), lambda x:x.InformationLevel==SMB_INFO_QUERY_EAS_FROM_LIST)
+    ]
+    def lengthfrom_Pad(self):
+        if self.underlayer.ParamOffset == 0:
+            return 0
+        pad = self.underlayer.ParamOffset - self.underlayer.size() 
+        pad -= 32 # SMB header
+        pad -= 2 # ByteCount in SMB Data
+        pad -= 1 # Name in SMB Data
+        return pad
+
+    def lengthfrom_Pad1(self):
+       if self.underlayer.DataOffset == 0:
+           return 0
+       pad = self.underlayer.DataOffset
+       pad -= self.underlayer.ParamOffset
+       pad -= self.underlayer.ParamCount
+       return pad 
+
+
+
+class SMB_Trans2_QUERY_INFO_Response_Param(Packet):
+    name = "SMB Trans2 QUERY FILE INFO Response Param"
+    fields_desc = [
+        LEShortField("EaErrorOffset", 0),
+    ]
+
+
+
+
+class SMB_Trans2_QUERY_FS_INFO_Response_Param(Packet):
+    name = "SMB Trans2 QUERY FILE INFO Response Param"
+    fields_desc = [
+    ]
+
+
+class SMB_Trans2_FIND_FIRST2_Response_Param(Packet):
+    name = "SMB Trans2 FIND FIRST2 Response Param"
+    smb_cmd = SMB_COM_TRANSACTION2
+    fields_desc = [
+        LEShortField("SearchID",0xfffd),
+        LEShortField("SearchCount",0),
+        LEShortField("EndOfSearch",1),
+        LEShortField("ErrorOffset",0),
+        LEShortField("LastNameOffset",0),
+]
+
+class SMB_Trans2_Final_Response(Packet):
+    name = "SMB Trans2 FIND FIRST2 Response"
+    smb_cmd = SMB_COM_TRANSACTION2
+    fields_desc = [
+        #ByteField("WordCount",10),
+        FieldLenField("WordCount", None, fmt="B", count_of="Setup", adjust=lambda pkt,x:x+10), 
+        FieldLenField("TotalParamCount", None, fmt='<H', length_of="Param"),
+        FieldLenField("TotalDataCount", None, fmt="<H", length_of="Data"), 
+        LEShortField("Reserved1",0),
+        FieldLenField("ParamCount", None, fmt='<H', length_of="Param"),
+        FieldLenField("ParamOffset", None, fmt='<H', count_of="Setup", adjust=lambda pkt,x:pkt.calcParamOffset(x)),
+        LEShortField("ParamDisplacement",0),
+        FieldLenField("DataCount", None, fmt="<H", length_of="Data"), 
+        FieldLenField("DataOffset", None, fmt="<H", length_of="Setup", adjust=lambda pkt,x:pkt.calcDataOffset(x)),
+        LEShortField("DataDisplacement",0),
+        FieldLenField("SetupCount", None, fmt="<B", count_of="Setup"), 
+        #ByteField("SetupCount",1), 
+        ByteField("Reserved2",0), 
+        FieldListField("Setup", None, LEShortEnumField("", None, SMB_Trans2_Commands)),# count_from = lambda pkt: pkt.setup()),
+        MultiFieldLenField("ByteCount", None, fmt='<H', length_of=("Pad1","Param","Pad2","Data")),
+        StrFixedLenField("Pad1", None, length_from=lambda x:x.lengthfrom_Pad1()),
+        PacketField("Param", None, Packet),
+        StrFixedLenField("Pad2", None, length_from=lambda x:x.lengthfrom_Pad2()),
+        PacketListField("Data", None, PacketField("", None, Packet)),
+    ]
+
+
+    def calcParamOffset(self, setupLen):
+        offset = 55  # SMB header and fixed SMB param
+        offset += setupLen*2  # setup len in byte
+        # len pad1 should only depend on setup, before everything should be aligned
+        offset += ((4-(3+2*setupLen)%4)%4)  
+        return offset
+
+    def calcDataOffset(self, setupLen):
+        offset = 55+setupLen*2+((4-(3+2*setupLen)%4)%4) # param offset
+        offset += len(self.Param) 
+        offset += ((4-len(self.Param)%4)%4) # len pad2
+        return offset
+
+    # SMB header and parameter already aligned;wordcount,setupcount and bytecount are not
+    def lengthfrom_Pad1(self):
+        pad = (4 - (1 + 2*len(self.Setup) + 2) % 4) % 4
+        return pad
+
+    # trans2 paramoffset already aligned,thus pad only depends on paramcount
+    def lengthfrom_Pad2(self):
+        pad = (4 - len(self.Param) % 4) % 4
+        return pad
+
 
 
 class SMB_Trans2_Response(Packet):
@@ -1445,6 +2119,17 @@ class SMB_Trans2_Secondary_Request(Packet):
         StrFixedLenField("Data", "", length_from=lambda pkt: pkt.ParamCount),
     ]
 
+#
+#   SMB COM NT TRANSACTION Command
+#
+NT_TRANSACT_CREATE              = 0x0001
+NT_TRANSACT_IOCTL               = 0x0002
+NT_TRANSACT_SET_SECURITY_DESC   = 0x0003
+NT_TRANSACT_NOTIFY_CHANGE       = 0x0004
+NT_TRANSACT_RENAME              = 0x0005
+NT_TRANSACT_QUERY_SECURITY_DESC = 0x0006
+
+
 class SMB_NT_Trans_Request(Packet):
     name = "SMB NT Trans Request"
     smb_cmd = SMB_COM_NT_TRANSACT #0xa0
@@ -1456,16 +2141,26 @@ class SMB_NT_Trans_Request(Packet):
         LEIntField("TotalDataCount",0),
         LEIntField("MaxParamCount",0),
         LEIntField("MaxDataCount",0),
-        FieldLenField("ParamCount", 0, fmt='<I', count_of="Params"),
+        FieldLenField("ParamCount", 0, fmt='<I', length_of="Param"),
+        #LEIntField("ParamCount", 0),
         LEIntField("ParamOffset",0),
         LEIntField("DataCount",0),
         LEIntField("DataOffset",0),
-        FieldLenField("SetupCount", 0, fmt='B', count_of="Setup"),
-        ShortField("Function",0),
-        #TODO: need more work on this part
-        FieldListField("Param", 0, XByteField("", 0), count_from = lambda pkt: pkt.ParamCount),
-        StrFixedLenField("Data", b"", length_from=lambda pkt: pkt.DataCount),
+        FieldLenField("SetupCount", 0, fmt='B', count_of="Setup", adjust = lambda pkt,x:x/2),
+        LEShortField("Function",0),
+        FieldListField("Setup", None, XByteField("", None), count_from = lambda pkt:pkt.SetupCount*2), 
+        LEShortField("ByteCount", 0),
+        # len pad1 = paramoffset - len SMB param - len(bytecount) - len(wordcount) - SMB header 
+        StrLenField("Pad1", 0, length_from = lambda pkt:pkt.ParamOffset-pkt.WordCount*2-35),
+        StrLenField("Param", 0, length_from=lambda pkt:pkt.ParamCount),
+        StrLenField("Pad2", 0, length_from = lambda pkt:pkt.DataOffset-pkt.ParamOffset-pkt.ParamCount),
+        StrLenField("Data", b"", length_from=lambda pkt: pkt.DataCount),
     ]
+
+class SMB_NT_Trans_IOCTL_Request(Packet):
+    name = "SMB NT Trans IOCTL Request"
+    fields_desc = [
+            ]
 
 class SMB_NT_Trans_Response(Packet):
     name = "SMB NT Trans Response"
@@ -1474,6 +2169,61 @@ class SMB_NT_Trans_Response(Packet):
         ByteField("WordCount",0),
         LEShortField("ByteCount",0),
     ]
+
+class SMB_NT_Trans_Final_Response(Packet):
+    name = "SMB NT Trans Final Response"
+    smb_cmd = SMB_COM_NT_TRANSACT
+    fields_desc = [
+        FieldLenField("WordCount", None, fmt="B", count_of="Setup", adjust=lambda pkt,x:x+18), 
+        StrFixedLenField("Reserved1", 0, length=3),
+        FieldLenField("TotalParamCount", None, fmt='<I', length_of="Param"),
+        FieldLenField("TotalDataCount", None, fmt="<I", length_of="Data"), 
+        FieldLenField("ParamCount", None, fmt='<I', length_of="Param"),
+        FieldLenField("ParamOffset", None, fmt='<I', length_of="Setup", adjust=lambda pkt,x:pkt.calcParamOffset(x)),
+        LEIntField("ParamDisplacement",0),
+        FieldLenField("DataCount", None, fmt="<I", length_of="Data"), 
+        FieldLenField("DataOffset", None, fmt="<I", length_of="Setup", adjust=lambda pkt,x:pkt.calcDataOffset(x)),
+        LEIntField("DataDisplacement",0),
+        FieldLenField("SetupCount", None, fmt="<B", count_of="Setup"), 
+        FieldListField("Setup", None, LEShortField("", None)),# count_from = lambda pkt: pkt.setup()),
+        MultiFieldLenField("ByteCount", None, fmt='<H', length_of=("Pad1","Param","Pad2","Data")),
+        StrLenField("Pad1", None, length_from=lambda x:x.lengthfrom_Pad1()),
+        PacketLenField("Param", None, Packet),
+        StrLenField("Pad2", None, length_from=lambda x:x.lengthfrom_Pad2()),
+        StrLenField("Data", None),
+    ]
+
+
+    def calcParamOffset(self, setupLen):
+        offset = 32 + 1 + 18*2 + 2 # SMB header and fixed SMB param
+        offset += setupLen  # setup len in byte
+        offset += ((4-offset)%4)%4 # pad1 
+        return offset
+
+    def calcDataOffset(self, setupLen):
+        offset = 32 + 1 + 18*2 + 2 + setupLen
+        offset += ((4-offset)%4)%4 # pad1 
+        offset += len(self.Param) 
+        offset += ((4-offset)%4)%4 # len pad2
+        return offset
+
+    # SMB header and parameter already aligned;wordcount,setupcount and bytecount are not
+    def lengthfrom_Pad1(self):
+        pad = (4 - (1 + 2*len(self.Setup) + 2) % 4) % 4
+        return pad
+
+    # trans2 paramoffset already aligned,thus pad only depends on paramcount
+    def lengthfrom_Pad2(self):
+        pad = (4 - len(self.Param) % 4) % 4
+        return pad
+
+class SMB_NT_Trans_IOCTL_Response_Param(Packet):
+    name = "SMB NT Trans IOCTL Response Param"
+    fields_desc = [
+
+            ]
+
+
 
 # [MS-CIFS].pdf - 2.2.5 Transaction Subcommands
 # http://msdn.microsoft.com/en-us/library/ee441557%28v=PROT.13%29.aspx
@@ -1555,9 +2305,9 @@ class SMB_Close_Response(Packet):
     name = "SMB Close"
     smb_cmd = SMB_COM_CLOSE
     fields_desc = [
-#        ByteField("WordCount",3),
+        ByteField("WordCount",0),
 #        XLEShortField("FID",0),
-        LEIntField("LastWriteTime", 0),
+#        LEIntField("LastWriteTime", 0),
         LEShortField("ByteCount",0),
     ]
 
@@ -1595,8 +2345,8 @@ class SMB_Delete_Request(Packet):
         ByteField("WordCount",1),
         FlagsField("SearchAttributes", 0, -16, SMB_FileAttributes),
         FieldLenField("ByteCount", 1, fmt='<H', length_of="FileName"),
-        ByteField("BufferFormat",1),
-        StrLenField("FileName", b"\xff", length_from=lambda x:x.ByteCount),
+        ByteField("BufferFormat",4),
+        StrLenField("FileName", None, length_from=lambda x:x.ByteCount-1),
     ]
 
 class SMB_Delete_Response(Packet):
@@ -1739,6 +2489,19 @@ class RAP_Response(Packet):
         StrField("OutData","")
     ]
 
+class WKSTA_INFO_100(Packet):
+    name = "Workstation Info 100"
+    fields_desc = [
+        LEIntField("wki100_platform_id", 500),
+        StrNullField("wki100_computername", "WORKSTATION"),
+        StrNullField("wki100_langroup", "WORKGROUP"),
+        LEIntField("wki100_ver_major", 5),
+        LEIntField("wki100_ver_minor", 1),
+        LEIntField("ReturnCode", 0)
+    ]
+
+
+
 
 bind_bottom_up(NBTSession, NBTSession_Request, TYPE = lambda x: x==0x81)
 bind_bottom_up(NBTSession, SMB_Header, TYPE = lambda x: x==0)
@@ -1762,6 +2525,8 @@ bind_bottom_up(SMB_Header, SMB_Treeconnect_AndX_Response2,
 #bind_bottom_up(SMB_Header, SMB_Treeconnect_AndX_Response_Extended, Command=lambda x: x==0x75, Flags=lambda x: x&0x80)
 bind_bottom_up(SMB_Header, SMB_NTcreate_AndX_Request,
                Command=lambda x: x==0xa2, Flags=lambda x: not x&0x80)
+bind_bottom_up(SMB_Header, SMB_NTcreate_AndX_Response_ERROR,
+               Command=lambda x: x==0xa2, Flags=lambda x: x&0x80)
 bind_bottom_up(SMB_Header, SMB_NTcreate_AndX_Response,
                Command=lambda x: x==0xa2, Flags=lambda x: x&0x80)
 bind_bottom_up(SMB_Header, SMB_Trans_Request,
@@ -1796,6 +2561,20 @@ bind_bottom_up(SMB_Header, SMB_Delete_Request,
 
 #bind_bottom_up(SMB_Write_AndX_Request, SMB_Data)
 bind_bottom_up(SMB_Read_AndX_Response, SMB_Data)
+bind_bottom_up(SMB_Header, SMB_NT_Trans_Request, Command=lambda x:x==SMB_COM_NT_TRANSACT) 
+
+bind_bottom_up(SMB_Header, SMB_Rename_Request, Command=lambda x:x==SMB_COM_RENAME) 
+
+# dissect trans2 requests based on trans2 subcom code in SMB parameter setup field
+bind_bottom_up(SMB_Trans2_Request, SMB_Trans2_FIND_FIRST2_Request, Setup=lambda x:x==[SMB_TRANS2_FIND_FIRST2])
+bind_bottom_up(SMB_Trans2_Request, SMB_Trans2_QUERY_FILE_INFO_Request, Setup=lambda x:x==[SMB_TRANS2_QUERY_FILE_INFORMATION])
+bind_bottom_up(SMB_Trans2_Request, SMB_Trans2_QUERY_PATH_INFO_Request, Setup=lambda x:x==[SMB_TRANS2_QUERY_PATH_INFORMATION])
+bind_bottom_up(SMB_Trans2_Request, SMB_Trans2_QUERY_FS_INFORMATION_Request, Setup=lambda x:x==[SMB_TRANS2_QUERY_FS_INFORMATION])
+bind_bottom_up(SMB_Trans2_Request, SMB_Trans2_SET_FILE_INFO_Request, Setup=lambda x:x==[SMB_TRANS2_SET_FILE_INFORMATION])
+bind_bottom_up(SMB_Trans2_SET_FILE_INFO_Request, SMB_SET_FILE_BASIC_INFO_STRUCT, InformationLevel=lambda x:x==SMB_SET_FILE_BASIC_INFO)
+bind_bottom_up(SMB_Trans2_SET_FILE_INFO_Request, SMB_SET_FILE_DISPOSITION_INFO_STRUCT, InformationLevel=lambda x:x==SMB_SET_FILE_DISPOSITION_INFO or x==1013)
+bind_bottom_up(SMB_Trans2_SET_FILE_INFO_Request, SMB_SET_FILE_ALLOCATION_INFO_STRUCT, InformationLevel=lambda x:x==SMB_SET_FILE_ALLOCATION_INFO or x==1019)
+bind_bottom_up(SMB_Trans2_SET_FILE_INFO_Request, SMB_SET_FILE_END_OF_FILE_INFO_STRUCT, InformationLevel=lambda x:x==SMB_SET_FILE_END_OF_FILE_INFO or x==1020)
 
 bind_bottom_up(SMB_Trans_Request, DCERPC_Header)
 bind_bottom_up(DCERPC_Header, DCERPC_Request, PacketType=lambda x: x==0)
@@ -1820,6 +2599,7 @@ bind_top_down(SMB_Header, SMB_Treeconnect_AndX_Response2, Command=0x75)
 #bind_top_down(SMB_Header, SMB_Treeconnect_AndX_Response_Extended, Command=0x75)
 bind_top_down(SMB_Header, SMB_Treedisconnect, Command=0x71)
 bind_top_down(SMB_Header, SMB_NTcreate_AndX_Response, Command=0xa2)
+bind_top_down(SMB_Header, SMB_NTcreate_AndX_Response_ERROR, Command=0xa2)
 bind_top_down(SMB_Header, SMB_Write_AndX_Response, Command=0x2f)
 bind_top_down(SMB_Header, SMB_Write_Response, Command=SMB_COM_WRITE)
 bind_top_down(SMB_Header, SMB_Read_AndX_Response, Command=0x2e)
@@ -1828,6 +2608,7 @@ bind_top_down(SMB_Header, SMB_Trans2_Request, Command=0x32)
 bind_top_down(SMB_Header, SMB_Trans2_Secondary_Request, Command=0x33)
 bind_top_down(SMB_Header, SMB_Open_AndX_Request, Command=0x2d)
 bind_top_down(SMB_Read_AndX_Response, SMB_Data)
+#bind_top_down(SMB_Trans2_Final_Response, SMB_Trans2_FIND_FIRST2_Response, {ParamCount: length_of(self.))
 
 bind_top_down(DCERPC_Header, DCERPC_Request, PacketType=0)
 bind_top_down(DCERPC_Header, DCERPC_Response, PacketType=2)

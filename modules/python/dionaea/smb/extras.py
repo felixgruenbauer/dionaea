@@ -15,8 +15,10 @@ class SmbConfig(object):
         if config is None:
             config = {}
 
-        self.native_os = "Windows 5.1"
-        self.native_lan_manager = "Windows 2000 LAN Manager"
+        #self.native_os = "Windows 5.1"
+        self.native_os = "Windows Server 2003 R2 3790 Service Pack 2"
+        #self.native_lan_manager = "Windows 2000 LAN Manager"
+        self.native_lan_manager = "Windows Server 2003 R2 5.2"
         self.oem_domain_name = "WORKGROUP"
         self.os_type = 2
         self.primary_domain = "WORKGROUP"
@@ -43,8 +45,16 @@ class SmbConfig(object):
                 "comment" : "Microsoft XPS Document Writer",
                 "path": "",
                 "type": "printq",
-            }
-        }
+            },
+            "TEST" : {
+                "name": "TEST",
+                "comment" : "tesasdfads",
+                "path": "/home/felix/workspace/smb/testshare",
+                "type": "disktree",
+            },
+ 
+       }
+
 
         value_names = [
             "native_lan_manager",

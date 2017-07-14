@@ -34,7 +34,7 @@ from time import time, localtime, altzone
 
 from dionaea import ndrlib
 from dionaea.core import g_dionaea, incident
-from .include.smbfields import DCERPC_Header, DCERPC_Response
+from .include.smbfields import DCERPC_Header, DCERPC_Response, WKSTA_INFO_100
 
 rpclog = logging.getLogger('rpcservices')
 
@@ -3171,7 +3171,7 @@ class SRVSVC(RPCService):
                 for i in self.Data:
                     data = self.Data[i]
                     self.__packer.pack_pointer(self.Netname_pointer) # netname
-                    self.__packer.pack_long(data['type']) # type
+                    self.__packer.pack_long(data['Type']) # type
                     self.__packer.pack_pointer(self.Remark_pointer) # remark
 
                 for j in self.Data:
@@ -3179,7 +3179,7 @@ class SRVSVC(RPCService):
                     self.__packer.pack_string_fix(
                         str(j+'\0').encode('utf16')[2:])
                     self.__packer.pack_string_fix(
-                        str(data['comment']+'\0').encode('utf16')[2:])
+                        str(data['Comment']+'\0').encode('utf16')[2:])
 
     class SHARE_INFO_502(object):
         # 2.2.4.26 SHARE_INFO_502_I
@@ -3228,7 +3228,7 @@ class SRVSVC(RPCService):
                 for i in self.Data:
                     data = self.Data[i]
                     self.__packer.pack_pointer(self.Netname_pointer) # netname
-                    self.__packer.pack_long(data['type']) # STYPE_DISKTREE
+                    self.__packer.pack_long(data['Type']) # STYPE_DISKTREE
                     self.__packer.pack_pointer(self.Remark_pointer) # remark
                     self.__packer.pack_long(self.Permissions)		# permissions
                     self.__packer.pack_long(self.Max_uses) # max_uses
@@ -3244,9 +3244,9 @@ class SRVSVC(RPCService):
                     self.__packer.pack_string_fix(
                         str(j+'\0').encode('utf16')[2:])
                     self.__packer.pack_string_fix(
-                        str(data['path']+'\0').encode('utf16')[2:])
+                        str(data['Path']+'\0').encode('utf16')[2:])
                     self.__packer.pack_string_fix(
-                        str(data['comment']+'\0').encode('utf16')[2:])
+                        str(data['Comment']+'\0').encode('utf16')[2:])
 
     class SHARE_INFO_2(object):
         #2.2.4.24 SHARE_INFO_2
@@ -3302,7 +3302,7 @@ class SRVSVC(RPCService):
                 for i in self.Data:
                     data = self.Data[i]
                     self.__packer.pack_pointer(self.Netname_pointer) # netname
-                    self.__packer.pack_long(data['type']) # STYPE_DISKTREE
+                    self.__packer.pack_long(data['Type']) # STYPE_DISKTREE
                     self.__packer.pack_pointer(self.Remark_pointer) # remark
                     self.__packer.pack_long(self.Permissions) # permissions
                     self.__packer.pack_long(self.Max_uses) # max_uses
@@ -3317,10 +3317,10 @@ class SRVSVC(RPCService):
                         str(j+'\0').encode('utf16')[2:])
                     # Remark
                     self.__packer.pack_string_fix(
-                        str(data['comment']+'\0').encode('utf16')[2:])
+                        str(data['Comment']+'\0').encode('utf16')[2:])
                     # Path
                     self.__packer.pack_string_fix(
-                        str(data['path']+'\0').encode('utf16')[2:])
+                        str(data['Path']+'\0').encode('utf16')[2:])
 
     class SERVER_INFO_101(object):
         # 2.2.4.41 SERVER_INFO_101
@@ -3831,14 +3831,130 @@ class WKSSVC(RPCService):
     uuid = UUID('6bffd098-a112-3610-9833-46c3f87e345a').hex
 
     ops = {
-        0x1b: "NetAddAlternateComputerName"
+        0x1b: "NetAddAlternateComputerName",
+        0x00: "NetrWkstaGetInfo",
     }
     vulns  = {
         0x1b: "MS03-39",
     }
 
+    class WKSTA_INFO_100(object):
+        # 2.2.5.1 WKSTA_INFO_100
+        #
+        #  
+        #
+        #typedef struct _SERVER_INFO_101 {
+        #  DWORD sv101_platform_id;
+        #  [string] wchar_t* sv101_name;
+        #  DWORD sv101_version_major;
+        #  DWORD sv101_version_minor;
+        #  DWORD sv101_type;
+        #  [string] wchar_t* sv101_comment;
+        #} SERVER_INFO_101,
+        # *PSERVER_INFO_101,
+        # *LPSERVER_INFO_101;
+
+        def __init__(self, p):
+            self.__packer = p
+            if isinstance(self.__packer,ndrlib.Packer):
+                self.Data = {}
+                # Windows NT or a newer Windows operating system version.
+                self.Pointer = 0x99999
+                self.wki100_platform_id = 500
+                #self.wki100_computername = "WORKSTATION".encode("utf-16le") 
+                self.Name_pointer= 0x68458
+                self.Comment_pointer = 0x68460
+                #self.wki100_langroup = "WORKGROUP".encode("utf-16le") 
+                #self.Comment_pointer = 0x73429
+                self.Version_major = 5 # Windows XP SP2 default reply
+                self.Version_minor = 1 # Windows XP SP2 default reply
+                # self.Type = 0x00051003 # Windows XP SP2 default reply (Type:
+                # Workstation, Server, NT Workstation, Potential Browser,
+                # Master Browser)
+                #self.Type = 0xFFFFFFFF # All servers
+            elif isinstance(self.__packer,ndrlib.Unpacker):
+                pass
+        def pack(self):
+            if isinstance(self.__packer,ndrlib.Packer):
+                self.__packer.pack_pointer(self.Pointer)
+                self.__packer.pack_long(self.wki100_platform_id)
+                self.__packer.pack_pointer(self.Name_pointer)
+                self.__packer.pack_pointer(self.Comment_pointer)
+                #self.__packer.pack_string_fix(self.wki100_computername)
+                #self.__packer.pack_string_fix(self.wki100_langroup)
+                self.__packer.pack_long(self.Version_major)
+                self.__packer.pack_long(self.Version_minor)
+                #self.__packer.pack_long(self.Type)
+                #self.__packer.pack_pointer(self.Comment_pointer)
+                #self.Name_pointer= 0x68458
+                #self.Comment_pointer = 0x73429
+                #self.Version_major = 5 # Windows XP SP2 default reply
+                #self.Version_minor = 1 # Windows XP SP2 default reply
+                # self.Type = 0x00051003 # Windows XP SP2 default reply (Type:
+                # Workstation, Server, NT Workstation, Potential Browser,
+                # Master Browser)
+#                self.Type = 0xFFFFFFFF # All servers
+#            elif isinstance(self.__packer,ndrlib.Unpacker):
+#                pass
+#        def pack(self):
+#            if isinstance(self.__packer,ndrlib.Packer):
+#                self.__packer.pack_pointer(self.Pointer)
+#                self.__packer.pack_long(self.Platform_id)
+#                self.__packer.pack_pointer(self.Name_pointer)
+#                self.__packer.pack_long(self.Version_major)
+#                self.__packer.pack_long(self.Version_minor)
+#                self.__packer.pack_long(self.Type)
+#                self.__packer.pack_pointer(self.Comment_pointer)
+
+
+                for j in range(len(self.Data)):
+                    self.__packer.pack_string_fix(
+                        self.Data[j].encode('utf-16le'))#[2:])
+
+
+
     @classmethod
     def handle_NetAddAlternateComputerName(cls, con, p):
         # MS03-039
         pass
+
+    @classmethod
+    def handle_NetrWkstaGetInfo(cls, con, p):
+        pass
+        # MS-WKST p. 53
+        #unsigned long NetrWkstaGetInfo(
+        #  [in, string, unique] WKSSVC_IDENTIFY_HANDLE ServerName,
+        #  [in] unsigned long Level,
+        #  [out, switch_is(Level)] LPWKSTA_INFO WkstaInfo
+        #);
+
+        p = ndrlib.Unpacker(p.StubData)
+        Pointer = p.unpack_pointer()
+        ServerName = p.unpack_string()
+        Level = p.unpack_long()
+        print("WorkstationName %s Level %i" % (ServerName,Level))
+
+
+        r = ndrlib.Packer()
+        r.pack_long(Level)
+        #r.pack_string_fix(ServerName)
+
+        if Level == 100:
+            #info = WKSTA_INFO_100()
+            s = WKSSVC.WKSTA_INFO_100(r)
+            server = ServerName.decode('UTF-16')#[2:]
+            #s.wki100_computername = "WorkStation".encode("utf-16le") 
+            lanGroup = "WORKGROUP"
+            # TODO win only accepts a valid netbios name MS-WKST p.54
+            #server = "x230"
+            #s.wki100_langroup = lanGroup.encode('utf-16le') 
+            s.Data = [server, lanGroup, ]
+            s.pack()
+
+        r.pack_long(0)
+
+        return r.get_buffer()
+        #return info.build()
+
+
 

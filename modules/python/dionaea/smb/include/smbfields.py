@@ -2357,6 +2357,16 @@ class SMB_Delete_Response(Packet):
         LEShortField("ByteCount",0),
     ]
 
+class SMB_Delete_Directory_Request(Packet):
+    name = "SMB Delete Request"
+    smb_cmd = SMB_COM_DELETE #0x06
+    fields_desc = [
+        ByteField("WordCount",1),
+        FieldLenField("ByteCount", 1, fmt='<H', length_of="FileName"),
+        ByteField("BufferFormat",4),
+        StrLenField("DirName", None, length_from=lambda x:x.ByteCount-1),
+    ]
+
 class DCERPC_Header(Packet):
     name = "DCERPC Header"
     fields_desc = [
@@ -2564,6 +2574,7 @@ bind_bottom_up(SMB_Read_AndX_Response, SMB_Data)
 bind_bottom_up(SMB_Header, SMB_NT_Trans_Request, Command=lambda x:x==SMB_COM_NT_TRANSACT) 
 
 bind_bottom_up(SMB_Header, SMB_Rename_Request, Command=lambda x:x==SMB_COM_RENAME) 
+bind_bottom_up(SMB_Header, SMB_Delete_Directory_Request, Command=lambda x:x==SMB_COM_DELETE_DIRECTORY) 
 
 # dissect trans2 requests based on trans2 subcom code in SMB parameter setup field
 bind_bottom_up(SMB_Trans2_Request, SMB_Trans2_FIND_FIRST2_Request, Setup=lambda x:x==[SMB_TRANS2_FIND_FIRST2])

@@ -222,7 +222,7 @@ class smbd(connection):
         r = None
         
         supCmd = [
-            #SMB_COM_DELETE_DIRECTORY       ,
+            SMB_COM_DELETE_DIRECTORY       ,
             #SMB_COM_OPEN                   ,
             #SMB_COM_CREATE                 ,
             SMB_COM_CLOSE                  ,
@@ -1518,6 +1518,35 @@ class smbd(connection):
             i.con = self
             i.status = rstatus
             i.report()
+        elif Command == SMB_COM_DELETE_DIRECTORY:
+            reqParam = p.getlayer(SMB_Delete_Directory_Request)
+            resp = SMB_Delete_Response()
+
+            memFS = self.treeConTable[reqHeader.TID]["Share"]["FS"]
+            dirName = reqParam.DirName.decode("utf-16le")
+            dirName = dirName.strip("\x00").strip(" ")
+            dirName = dirName.replace("\\", "/")
+
+            try:
+                memFS.removedir(dirName)
+            except fs.errors.DirectoryNotEmpty:
+                rstatus = STATUS_DIRECTORY_NOT_EMPTY
+            except (fs.errors.DirectoryExpected, fs.errors.ResourceNotFound):
+                rstatus = STATUS_OBJECT_PATH_NOT_FOUND 
+            except fs.errors.RemoveRootError:
+                rstatus = STATUS_CANNOT_DELETE
+
+            smblog.info('Delete directory %s' % (dirName)) 
+
+                    
+            r = resp
+
+            i = incident("dionaea.modules.python.smb.deletedir")
+            i.path = dirName 
+            i.con = self
+            i.status = rstatus
+            i.report()
+
         elif Command == SMB_COM_TRANSACTION2_SECONDARY:
             h = p.getlayer(SMB_Trans2_Secondary_Request)
             # TODO: need some extra works

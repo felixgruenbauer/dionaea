@@ -1484,11 +1484,37 @@ class smbd(connection):
                 r = SMB_Trans2_Response()
 
         elif Command == SMB_COM_DELETE:
-            h = p.getlayer(SMB_Delete_Request)
-            r = SMB_Delete_Response()
+            reqParam = p.getlayer(SMB_Delete_Request)
+            resp = SMB_Delete_Response()
+
+            memFS = self.treeConTable[reqHeader.TID]["Share"]["FS"]
+            fileName = reqParam.FileName.decode("utf-16le")
+            fileName = fileName.strip("\x00").strip(" ")
+            fileName = fileName.replace("\\", "/")
+            searchPattern = fileName.split("/")[-1]
+            dirPath = fileName[:-len(searchPattern)]
+            if not memFS.exists(dirPath):
+                rstatus = STATUS_OBJECT_PATH_SYNTAX_BAD
+                #resp = SMB_Error_Response()
+            else:
+                smblog.info('Delete %s in %s' % (searchPattern, dirPath)) 
+
+                searchResults = memFS.filterdir(dirPath, files=[searchPattern], exclude_dirs=["*"])
+                rstatus = STATUS_NO_SUCH_FILE
+                    
+
+                # TODO check searchAttributes if Sys or hidden files are included
+                # and exclude RO
+                for item in searchResults:
+                    fullPath = fs.path.join(dirPath, item.name)
+                    # TODO check if file is open somewhere
+                    memFS.remove(fullPath)
+                    rstatus = STATUS_SUCCESS
+
+            r = resp
 
             i = incident("dionaea.modules.python.smb.delete")
-            #i.path = fileName
+            i.path = fileName
             i.con = self
             i.status = rstatus
             i.report()

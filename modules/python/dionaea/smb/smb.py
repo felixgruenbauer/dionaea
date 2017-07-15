@@ -61,11 +61,12 @@ STATE_NTREAD = 5
 
 registered_services = {}
 
-# shares are saved for recconnect
-conCache = OrderedDict() 
-conCacheLimit = 5
-activeConCount = 0
+fsLimit = 60000000
 activeConLimit = 2
+conCacheLimit = 5
+
+conCache = OrderedDict() 
+activeConCount = 0
 
 def register_rpc_service(service):
     uuid = service.uuid
@@ -93,16 +94,16 @@ class smbd(connection):
 
         self.config = None
 
+        # segmented packets mostly from large write req
         self.segPak = False
         self.segPakLen = 0
         self.buffer = b""
 
 
-        self.fileOpenTable = {}
         
         defaultShares = {
-            "TEST": {
-                "Name": "TEST",
+            "MYSHARE": {
+                "Name": "MYSHARE",
                 "Comment": "tesasdfads",
                 "Path": "/home/felix/testshare",
                 "Service": SMB_SERVICE_DISK_SHARE,
@@ -120,23 +121,20 @@ class smbd(connection):
                 "NativeFS": ""
             }
         }
-        memFS = defaultShares["TEST"]["FS"]
+        memFS = defaultShares["MYSHARE"]["FS"]
         memFS.makedirs("/Users/pete")
         memFS.makedirs("/pictures/vacation")
         memFS.setbytes("/Users/pete/attachement.txt", b"test")
-        memFS.setbytes("/password.txt", b"pete"*16)
+        memFS.setbytes("/Users/pete/password.txt", b"pete"*16)
         memFS.setbytes("/Hello.txt", b"pete"*16)
  
         self.sharesTable = conCache.pop(self.remote.host, defaultShares)
 
-
-
-
         self.fsSize = 0
         for share in self.sharesTable:
-            for list in self.sharesTable[share]["FS"].walk():
-                for file in list[2]:
-                    path = fs.path.join(list[0], file.name)
+            for folder in self.sharesTable[share]["FS"].walk():
+                for f in folder[2]:
+                    path = fs.path.join(folder[0], f.name)
                     self.fsSize += self.sharesTable[share]["FS"].getsize(path)
 
         # connection data
@@ -145,17 +143,16 @@ class smbd(connection):
         self.clientMaxBuffer = None       
         self.sessionTable = {}
         self.treeConTable = {} 
+        self.fileOpenTable = {}
         #self.isSigningActive = False
         #self.conSessionKey = ''
         #self.sessionSetupRecv = False
 
-        # FS info win7 values
-        self.TotalAllocationUnits = 20000
-        self.CallerFreeAllocationUnits = 5000
-        self.ActualFreeAllocationUnits = 5000
         self.SectorsPerAllocationUnit = 8
         self.BytesPerSector = 512
-        self.fsMaxSize = 5000*8*512
+        self.TotalAllocationUnits = int(fsLimit/(self.BytesPerSector*self.SectorsPerAllocationUnit)) 
+        #self.CallerFreeAllocationUnits = self.TotalAllocationUnits 
+        #self.ActualFreeAllocationUnits = self.TotalAllocationUnits 
      
         
         
@@ -655,7 +652,13 @@ class smbd(connection):
 
             else:
                 respParam = SMB_Error_Response()
-                rstatus = STATUS_BAD_NETWORK_NAME 
+                rstatus = STATUS_OBJECT_PATH_NOT_FOUND 
+
+            i = incident("dionaea.modules.python.smb.treeconnect")
+            i.con = self
+            i.share = shareName
+            i.status = rstatus
+            i.report()
 
             r = respParam
         elif Command == SMB_COM_TREE_DISCONNECT:
@@ -665,11 +668,11 @@ class smbd(connection):
             reqParam = p.getlayer(SMB_Close)
             if reqParam.FID in self.fileOpenTable and self.fileOpenTable[reqParam.FID] is not None:
                 #fileobj = self.fileOpenTable[p.FID]
-                icd = incident("dionaea.download.complete")
-                icd.path = self.fileOpenTable[reqParam.FID]["FileName"] 
-                icd.url = "smb://" + self.remote.host
-                icd.con = self
-                icd.report()
+                #icd = incident("dionaea.download.complete")
+                #icd.path = self.fileOpenTable[reqParam.FID]["FileName"] 
+                #icd.url = "smb://" + self.remote.host
+                #icd.con = self
+                #icd.report()
                 #self.fileOpenTable[p.FID].unlink(self.fileOpenTable[p.FID].name)
                 if self.fileOpenTable[reqParam.FID]["Type"] == SMB_RES_DISK and self.fileOpenTable[reqParam.FID]["Handle"] != -1:
                     self.fileOpenTable[reqParam.FID]["Handle"].close()
@@ -819,6 +822,11 @@ class smbd(connection):
                 else:
                     resp = SMB_Error_Response()
 
+            i = incident("dionaea.modules.python.smb.ntcreate")
+            i.con = self
+            i.path = fileName 
+            i.status = rstatus
+            i.report()
             r = resp
 #            if h.FileAttributes & (SMB_FA_HIDDEN|SMB_FA_SYSTEM|SMB_FA_ARCHIVE|SMB_FA_NORMAL):
 #                # if a normal file is requested, provide a file
@@ -903,7 +911,7 @@ class smbd(connection):
                         offset = (reqParam.HighOffset<<32)|reqParam.Offset
 
                     byteCountToWrite = (reqParam.DataLenHigh<<16)|reqParam.DataLenLow
-                    if byteCountToWrite + self.fsSize > self.fsMaxSize:
+                    if byteCountToWrite + self.fsSize > fsLimit:
                         rstatus = STATUS_DISK_FULL
                         r = SMB_Error_Response()
                         icd = incident("dionaea.smb.memoryfs.full")
@@ -936,6 +944,11 @@ class smbd(connection):
                                 outpacket.show()
                                 self.outbuf = outpacket.build()
                             self.buf = b''
+            i = incident("dionaea.modules.python.smb.writex")
+            i.con = self
+            i.path = self.fileOpenTable[reqParam.FID]["FileName"] 
+            i.status = rstatus
+            i.report()
         elif Command == SMB_COM_WRITE:
             h = p.getlayer(SMB_Write_Request)
             if h.FID in self.fileOpenTable and self.fileOpenTable[h.FID] is not None:
@@ -996,6 +1009,12 @@ class smbd(connection):
                 r /= rdata
     
                 self.state['readcount'] = newreadcount
+
+            i = incident("dionaea.modules.python.smb.readx")
+            i.con = self
+            i.path = self.fileOpenTable[reqParam.FID]["FileName"] 
+            i.status = rstatus
+            i.report()
         elif Command == SMB_COM_RENAME:
             reqParam = p.getlayer(SMB_Rename_Request)
             resp = SMB_Error_Response()
@@ -1027,9 +1046,9 @@ class smbd(connection):
             includeHidden = (SMB_FA_HIDDEN & reqParam.SearchAttributes) > 0
             includeRO = (SMB_FA_READONLY & reqParam.SearchAttributes) > 0
                 
-            for file in searchResults:
-                path = fs.path.join(dirPath, file.name)
-                if memFS.isdir(file.name):
+            for item in searchResults:
+                path = fs.path.join(dirPath, item.name)
+                if memFS.isdir(path):
                     if includeDir:
                         memFS.movedir(path, newFileName, create=True)
                     else:
@@ -1040,7 +1059,15 @@ class smbd(connection):
 
             smblog.info('Move %s to %s' % (oldFileName, newFileName)) 
             r = resp
- 
+
+            i = incident("dionaea.modules.python.smb.rename")
+            i.con = self
+            i.new = newFileName
+            i.old = oldFileName
+            i.status = rstatus
+            i.report()
+
+            
 
         elif Command == SMB_COM_TRANSACTION:
             h = p.getlayer(SMB_Trans_Request)
@@ -1219,14 +1246,15 @@ class smbd(connection):
                 r.Data = []
                 reqParam = p.getlayer(SMB_Trans2_QUERY_FS_INFORMATION_Request)
                 infoLvl = reqParam.InformationLevel
+                freeUnits = self.TotalAllocationUnits - int(self.fsSize/(self.BytesPerSector*self.SectorsPerAllocationUnit))
 
                 if infoLvl == SMB_QUERY_FS_VOLUME_INFO:
                     info = SMB_STRUCT_QUERY_FS_VOLUME_INFO()
                     info.VolumeLabel = "DISK A".encode("utf-16le")
                 elif infoLvl == SMB_QUERY_FS_SIZE_INFO:
                     info = SMB_STRUCT_QUERY_FS_SIZE_INFO()
-                    info.TotalAllocationUnits = self.CallerFreeAllocationUnits 
-                    info.TotalFreeAllocationUnits = self.CallerFreeAllocationUnits-int(self.fsSize/4096)
+                    info.TotalAllocationUnits = self.TotalAllocationUnits 
+                    info.TotalFreeAllocationUnits = freeUnits 
                     info.SectorsPerAllocationUnit = self.SectorsPerAllocationUnit 
                     info.BytesPerSector = self.BytesPerSector 
                 elif infoLvl == SMB_QUERY_FS_DEVICE_INFO:
@@ -1236,14 +1264,19 @@ class smbd(connection):
                     info.FileSystemName = self.treeConTable[reqHeader.TID]["Share"]["NativeFS"].encode("utf-16le")
                 else:
                     info = SMB_STRUCT_QUERY_FULL_FS_SIZE_INFO()
-                    info.TotalAllocationUnits = self.CallerFreeAllocationUnits 
-                    info.CallerFreeAllocationUnits = self.CallerFreeAllocationUnits-int(self.fsSize/4096)
-                    info.ActualFreeAllocationUnits = self.CallerFreeAllocationUnits-int(self.fsSize/4096)
+                    info.TotalAllocationUnits = self.TotalAllocationUnits 
+                    info.CallerFreeAllocationUnits = freeUnits 
+                    info.ActualFreeAllocationUnits = freeUnits 
                     info.SectorsPerAllocationUnit = self.SectorsPerAllocationUnit 
                     info.BytesPerSector = self.BytesPerSector 
                 r.Data.append(info)
                 smblog.info('Query FS info')
-                
+                i = incident("dionaea.modules.python.smb.queryfs")
+                i.con = self
+                i.status = rstatus
+                i.report()
+
+               
             elif h.Setup[0] == SMB_TRANS2_QUERY_FILE_INFORMATION or h.Setup[0] == SMB_TRANS2_QUERY_PATH_INFORMATION:
                 resp = SMB_Trans2_Final_Response()
                 resp.Data = []
@@ -1267,9 +1300,10 @@ class smbd(connection):
                         rstatus = STATUS_OBJECT_NAME_NOT_FOUND
                         resp = SMB_Error_Response()
 
+                infoLvl = ''
                 if rstatus == STATUS_SUCCESS:
-                    smblog.info('Query info for file %s' % fileName)
                     infoLvl = reqParam.InformationLevel
+                    smblog.info('Query info for file %s' % fileName)
                     isFile = self.treeConTable[reqHeader.TID]["Share"]["Service"] == SMB_SERVICE_DISK_SHARE
                     info = "" 
                     if infoLvl == SMB_QUERY_FILE_ALL_INFO:
@@ -1317,6 +1351,12 @@ class smbd(connection):
                         info.StreamName = "".encode("utf-16le")
                     resp.Data.append(info)
 
+                i = incident("dionaea.modules.python.smb.queryfile")
+                i.informationlvl = infoLvl
+                i.con = self
+                i.status = rstatus
+                i.report()
+
                 r = resp
 
             elif h.Setup[0] == SMB_TRANS2_SET_FILE_INFORMATION:
@@ -1353,7 +1393,7 @@ class smbd(connection):
                     if infoLvl == SMB_SET_FILE_ALLOCATION_INFO or infoLvl == 1019:
                         info = p.getlayer(SMB_SET_FILE_ALLOCATION_INFO_STRUCT)
                         inc = info.AllocationSize - memFS.getsize(fileName)
-                        if inc + self.fsSize > self.fsMaxSize:
+                        if inc + self.fsSize > fsLimit:
                             rstatus = STATUS_INSUFF_SERVER_RESOURCES
                             res = SMB_Error_Response()
                         else:
@@ -1361,12 +1401,19 @@ class smbd(connection):
                     if infoLvl == SMB_SET_FILE_END_OF_FILE_INFO or infoLvl == 1020:
                         info = p.getlayer(SMB_SET_FILE_END_OF_FILE_INFO_STRUCT)
                         change = info.EndOfFile - memFS.getsize(fileName)
-                        if change + self.fsSize > self.fsMaxSize:
+                        if change + self.fsSize > fsLimit:
                             #rstatus = STATUS_DISK_FULL
                             rstatus = STATUS_INSUFF_SERVER_RESOURCES
                             resp = SMB_Error_Response()
                         else:
                             fileHandle.truncate(info.EndOfFile)
+
+                i = incident("dionaea.modules.python.smb.setfile")
+                i.informationlvl = infoLvl
+                i.con = self
+                i.status = rstatus
+                i.report()
+
                 r = resp
 
 
@@ -1426,6 +1473,11 @@ class smbd(connection):
                     
                 # TODO if InfoLevel QUERY_EAS... 
                 # TODO implement Search open table
+                i = incident("dionaea.modules.python.smb.findfirst2")
+                i.path = fileName
+                i.con = self
+                i.status = rstatus
+                i.report()
 
                 r = resp 
             else:
@@ -1434,6 +1486,12 @@ class smbd(connection):
         elif Command == SMB_COM_DELETE:
             h = p.getlayer(SMB_Delete_Request)
             r = SMB_Delete_Response()
+
+            i = incident("dionaea.modules.python.smb.delete")
+            #i.path = fileName
+            i.con = self
+            i.status = rstatus
+            i.report()
         elif Command == SMB_COM_TRANSACTION2_SECONDARY:
             h = p.getlayer(SMB_Trans2_Secondary_Request)
             # TODO: need some extra works

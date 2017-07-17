@@ -389,6 +389,14 @@ class smbd(connection):
         
         
         if Command == SMB_COM_NEGOTIATE:
+            global activeConCount
+            print(activeConCount)
+            if activeConCount >= activeConLimit:
+                smbh.Status = STATUS_INSUFF_SERVER_RESOURCES
+                r = SMB_Error_Response()
+                r = NBTSession()/smbh/r
+                return r
+            activeConCount += 1
             # Negociate Protocol -> Send response that supports minimal features in NT LM 0.12 dialect
             # (could be randomized later to avoid detection - but we need more dialects/options support)
             r = SMB_Negociate_Protocol_Response(
@@ -414,12 +422,7 @@ class smbd(connection):
         # elif self.state == STATE_SESSIONSETUP and
         # p.getlayer(SMB_Header).Command == 0x73:
         elif Command == SMB_COM_SESSION_SETUP_ANDX:
-            global activeConCount
-            if activeConCount >= activeConLimit:
-                smbh.Status = STATUS_INSUFF_SERVER_RESOURCES
-                r = SMB_Error_Response()
-                r = NBTSession()/smbh/r
-                return r
+
             if p.haslayer(SMB_Sessionsetup_ESEC_AndX_Request):
                 r = SMB_Sessionsetup_ESEC_AndX_Response(
                     NativeOS=self.config.native_os + "\0",
@@ -487,7 +490,6 @@ class smbd(connection):
                             "IdleTime": "",
                         }
                         smblog.info('Guest session established')
-                        activeConCount += 1
 
                 elif sb.startswith(b"\x04\x04") or sb.startswith(b"\x05\x04"):
                     # GSSKRB5 CFX wrapping
@@ -596,8 +598,8 @@ class smbd(connection):
                             "IdleTime": "",
                         }
                         smblog.info('Guest session established')
-                        activeConCount += 1
-                
+
+
             elif p.haslayer(SMB_Sessionsetup_AndX_Request2):
                 r = SMB_Sessionsetup_AndX_Response2(
                     NativeOS=self.config.native_os + "\0",

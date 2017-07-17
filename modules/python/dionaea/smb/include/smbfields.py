@@ -1274,7 +1274,7 @@ class SMB_NTcreate_AndX_Response(Packet):
         NTTimeField("LastAccess",0),
         NTTimeField("LastModified",0),
         NTTimeField("Change",0),
-        FlagsField("FileAttributes", 0x80, -32, SMB_FileAttributes),
+        FlagsField("FileAttributes", 0x20, -32, SMB_FileAttributes),
         LELongField("AllocationSize",0),
         LELongField("EndOfFile",0),
         #LEShortField("FileType",2),
@@ -1301,7 +1301,7 @@ class SMB_NTcreate_AndX_Response_Extended(Packet):
         NTTimeField("LastAccess",0),
         NTTimeField("LastModified",0),
         NTTimeField("Change",0),
-        FlagsField("FileAttributes", 0x80, -32, SMB_FileAttributes),
+        FlagsField("FileAttributes", 0x20, -32, SMB_FileAttributes),
         LELongField("AllocationSize",0),
         LELongField("EndOfFile",0),
         #LEShortField("FileType",2),
@@ -1629,7 +1629,7 @@ class SMB_STRUCT_FIND_FILE_BOTH_DIRECTORY_INFO(Packet):
         LELongField("LastChangeTime", 0),
         LELongField("EndOfFile", 0),
         LELongField("AllocationSize", 0),
-        FlagsField("ExtFileAttributes", SMB_EXT_ATTR_NORMAL, -32, SMB_ExtFileAttributes),
+        FlagsField("ExtFileAttributes", SMB_EXT_ATTR_ARCHIVE, -32, SMB_ExtFileAttributes),
         FieldLenField("FileNameLength", None, fmt="<I", length_of="FileName"),
         LEIntField("EaSize", 0),
         ByteField("ShortNameLength", 0),
@@ -2582,7 +2582,7 @@ bind_bottom_up(SMB_Trans2_Request, SMB_Trans2_QUERY_FILE_INFO_Request, Setup=lam
 bind_bottom_up(SMB_Trans2_Request, SMB_Trans2_QUERY_PATH_INFO_Request, Setup=lambda x:x==[SMB_TRANS2_QUERY_PATH_INFORMATION])
 bind_bottom_up(SMB_Trans2_Request, SMB_Trans2_QUERY_FS_INFORMATION_Request, Setup=lambda x:x==[SMB_TRANS2_QUERY_FS_INFORMATION])
 bind_bottom_up(SMB_Trans2_Request, SMB_Trans2_SET_FILE_INFO_Request, Setup=lambda x:x==[SMB_TRANS2_SET_FILE_INFORMATION])
-bind_bottom_up(SMB_Trans2_SET_FILE_INFO_Request, SMB_SET_FILE_BASIC_INFO_STRUCT, InformationLevel=lambda x:x==SMB_SET_FILE_BASIC_INFO)
+bind_bottom_up(SMB_Trans2_SET_FILE_INFO_Request, SMB_SET_FILE_BASIC_INFO_STRUCT, InformationLevel=lambda x:x==SMB_SET_FILE_BASIC_INFO or x==1004)
 bind_bottom_up(SMB_Trans2_SET_FILE_INFO_Request, SMB_SET_FILE_DISPOSITION_INFO_STRUCT, InformationLevel=lambda x:x==SMB_SET_FILE_DISPOSITION_INFO or x==1013)
 bind_bottom_up(SMB_Trans2_SET_FILE_INFO_Request, SMB_SET_FILE_ALLOCATION_INFO_STRUCT, InformationLevel=lambda x:x==SMB_SET_FILE_ALLOCATION_INFO or x==1019)
 bind_bottom_up(SMB_Trans2_SET_FILE_INFO_Request, SMB_SET_FILE_END_OF_FILE_INFO_STRUCT, InformationLevel=lambda x:x==SMB_SET_FILE_END_OF_FILE_INFO or x==1020)

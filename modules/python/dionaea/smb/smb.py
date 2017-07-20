@@ -787,14 +787,14 @@ class smbd(connection):
                         else:
                             fileHandle = -1
                             createAction = SMB_CREATDISP_FILE_OPEN
-                            resp.FileAttributes == SMB_FA_DIRECTORY
+                            resp.FileAttributes = SMB_FA_DIRECTORY
                             smblog.info("OPEN Folder! %s" % fileName)
                     # TODO what happens when a file exists and CREATOPT_DIR is set
                     elif (reqParam.CreateOptions & SMB_CREATOPT_DIRECTORY) and not memFS.exists(fileName):
                         try:
                             memFS.makedirs(fileName)
                             fileHandle = -1
-                            resp.FileAttributes == SMB_FA_DIRECTORY
+                            resp.FileAttributes = SMB_FA_DIRECTORY
                             createAction = SMB_CREATDISP_FILE_CREATE
                             smblog.info("OPEN Folder! %s" % fileName)
                         except Exception:
@@ -814,6 +814,11 @@ class smbd(connection):
                     resp.EndOfFile = memFS.getsize(fileName)
                     resp.FileType = 0 # Directory or file
                     resp.OpLockLevel = (reqParam.CreateFlags&0b00000110)>>1
+                    details = memFS.getinfo(fileName, namespaces=["details"])
+                    resp.Created = details.created
+                    resp.LastAccess = details.accessed
+                    resp.LastWrite = details.modified
+                    resp.Change = details.modified
                     #resp.FileAttributes = 0x00000000
                     self.fileOpenTable[fid] = {
                             "Handle": fileHandle,
@@ -1293,30 +1298,39 @@ class smbd(connection):
                         rstatus = STATUS_INVALID_HANDLE 
                         resp = SMB_Error_Response()
                 else:
-                    reqParam = p.getlayer(SMB_Trans2_QUERY_PATH_INFO_Request)
-                    fileName = reqParam.FileName.decode("utf-16le")
-                    fileName = fileName.strip("\x00").strip(" ").replace("\\", "/")
-                    if fileName == "":
-                        fileName == "/"
-                    if not memFS.exists(fileName):
-                        rstatus = STATUS_OBJECT_NAME_NOT_FOUND
+                    if self.treeConTable[reqHeader.TID]["Share"]["Service"] != SMB_SERVICE_DISK_SHARE:
+                        rstatus = STATUS_INVALID_DEVICE_REQUEST
                         resp = SMB_Error_Response()
+                    else:
+                        reqParam = p.getlayer(SMB_Trans2_QUERY_PATH_INFO_Request)
+                        fileName = reqParam.FileName.decode("utf-16le")
+                        fileName = fileName.strip("\x00").strip(" ").replace("\\", "/")
+                        if fileName == "":
+                            fileName == "/"
+                        if not memFS.exists(fileName):
+                            rstatus = STATUS_OBJECT_NAME_NOT_FOUND
+                            resp = SMB_Error_Response()
 
                 infoLvl = ''
                 if rstatus == STATUS_SUCCESS:
                     infoLvl = reqParam.InformationLevel
                     smblog.info('Query info for file %s' % fileName)
                     isFile = self.treeConTable[reqHeader.TID]["Share"]["Service"] == SMB_SERVICE_DISK_SHARE
-                    info = "" 
+                    info = ""
                     if infoLvl == SMB_QUERY_FILE_ALL_INFO:
+                        details = memFS.getinfo(fileName, namespaces=["details"])
                         info = SMB_STRUCT_QUERY_FILE_BASIC_INFO()
+                        info.Created = details.created
+                        info.LastAccess = details.accessed
+                        info.LastWrite = details.modified
+                        info.Change = details.modified
                         if memFS.isdir(fileName):
-                            info.ExtFileAttributes = SMB_EXT_ATTR_DIRECTORY 
+                            info.ExtFileAttributes = SMB_EXT_ATTR_DIRECTORY
                         else:
-                            info.ExtFileAttributes = SMB_EXT_ATTR_NORMAL 
+                            info.ExtFileAttributes = SMB_EXT_ATTR_ARCHIVE
                         resp.Data.append(info)
                         info = SMB_STRUCT_QUERY_FILE_STANDARD_INFO()
-                        info.AllocationSize = memFS.getsize(fileName) if isFile else 4096 
+                        info.AllocationSize = memFS.getsize(fileName) if isFile else 4096
                         info.EndOfFile = memFS.getsize(fileName) if isFile else 0
                         info.NumberOfLinks = 1
                         info.DeletePending = 0
@@ -1329,13 +1343,18 @@ class smbd(connection):
                         info.FileName = fileName.split("/")[-1].encode("utf-16le")
                     elif infoLvl == SMB_QUERY_FILE_BASIC_INFO or infoLvl == 1004:
                         info = SMB_STRUCT_QUERY_FILE_BASIC_INFO()
+                        details = memFS.getinfo(fileName, namespaces=["details"])
+                        info.Created = details.created
+                        info.LastAccess = details.accessed
+                        info.LastWrite = details.modified
+                        info.Change = details.modified
                         if memFS.isdir(fileName):
-                            info.ExtFileAttributes = SMB_EXT_ATTR_DIRECTORY 
+                            info.ExtFileAttributes = SMB_EXT_ATTR_DIRECTORY
                         else:
-                            info.ExtFileAttributes = SMB_EXT_ATTR_NORMAL 
+                            info.ExtFileAttributes = SMB_EXT_ATTR_ARCHIVE
                     elif infoLvl == SMB_QUERY_FILE_STANDARD_INFO or infoLvl == 1005:
                         info = SMB_STRUCT_QUERY_FILE_STANDARD_INFO()
-                        info.AllocationSize = memFS.getsize(fileName) if isFile else 4096 
+                        info.AllocationSize = memFS.getsize(fileName) if isFile else 4096
                         info.EndOfFile = memFS.getsize(fileName) if isFile else 0
                         info.NumberOfLinks = 1
                         info.DeletePending = 0
@@ -1350,7 +1369,9 @@ class smbd(connection):
                         info = SMB_STRUCT_QUERY_FILE_INTERNAL_INFO()
                     elif infoLvl == SMB_QUERY_FILE_STREAM_INFO or infoLvl == 1022:
                         info = SMB_STRUCT_QUERY_FILE_STREAM_INFO()
-                        info.StreamName = "".encode("utf-16le")
+                        info.StreamSize = info.StreamAllocationSize = memFS.getsize(fileName)
+                        if not memFS.isdir(fileName):
+                            info.StreamName = "::$DATA".encode("utf-16le")
                     resp.Data.append(info)
 
                 i = incident("dionaea.modules.python.smb.queryfile")
@@ -1459,21 +1480,26 @@ class smbd(connection):
                     info = SMB_STRUCT_FIND_FILE_BOTH_DIRECTORY_INFO()
                     info.FileName = file.name.encode("utf-16le") 
                     fullPath = fs.path.join(dirPath, file.name)
+                    details = memFS.getinfo(fullPath, namespaces=["details"])
+                    info.Created = details.created
+                    info.LastAccess = details.accessed
+                    info.LastWrite = details.modified
+                    info.Change = details.modified
                     info.EndOfFile = memFS.getsize(fullPath) 
                     info.AllocationSize = memFS.getsize(fullPath) 
                     if memFS.isdir(fullPath):
                         info.ExtFileAttributes = SMB_EXT_ATTR_DIRECTORY
                     else:
                         # or SMB_EXT_ATTR_ARCHIVE
-                        info.ExtFileAttributes = SMB_EXT_ATTR_NORMAL
+                        info.ExtFileAttributes = SMB_EXT_ATTR_ARCHIVE
 
                     if (len(searchResults)-1) > searchResults.index(file):
                         info.NextEntryOffset = 94 + len(info.FileName) 
 
                     resp.Data.append(info)
                     resp.Param.SearchCount += 1
-                    
-                # TODO if InfoLevel QUERY_EAS... 
+
+                # TODO if InfoLevel QUERY_EAS...
                 # TODO implement Search open table
                 i = incident("dionaea.modules.python.smb.findfirst2")
                 i.path = fileName
@@ -1678,9 +1704,8 @@ class smbd(connection):
     def handle_disconnect(self):
         for i in self.fileOpenTable:
             if self.fileOpenTable[i] is not None:
-                self.fileOpenTable[i].close()
-                self.fileOpenTable[i].unlink(self.fileOpenTable[i].name)
-
+                if self.fileOpenTable[i]["Handle"] != -1:
+                    self.fileOpenTable[i]["Handle"].close()
         if len(conCache) >= conCacheLimit:
             conCache.popitem(last=False)
         conCache[self.remote.host] = self.sharesTable

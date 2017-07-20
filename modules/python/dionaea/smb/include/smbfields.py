@@ -1272,7 +1272,7 @@ class SMB_NTcreate_AndX_Response(Packet):
         XLEIntField("CreateAction",1),
         NTTimeField("Created",0),
         NTTimeField("LastAccess",0),
-        NTTimeField("LastModified",0),
+        NTTimeField("LastWrite",0),
         NTTimeField("Change",0),
         FlagsField("FileAttributes", 0x20, -32, SMB_FileAttributes),
         LELongField("AllocationSize",0),
@@ -1299,7 +1299,7 @@ class SMB_NTcreate_AndX_Response_Extended(Packet):
         XLEIntField("CreateAction",1),
         NTTimeField("Created",0),
         NTTimeField("LastAccess",0),
-        NTTimeField("LastModified",0),
+        NTTimeField("LastWrite",0),
         NTTimeField("Change",0),
         FlagsField("FileAttributes", 0x20, -32, SMB_FileAttributes),
         LELongField("AllocationSize",0),
@@ -1623,10 +1623,10 @@ class SMB_STRUCT_FIND_FILE_BOTH_DIRECTORY_INFO(Packet):
         #FieldLenField("NextEntryOffset", None, fmt="<I", length_of="FileName", adjust = lambda pkt,x:x+94 if pkt.hasNext else 0),
         LEIntField("NextEntryOffset", 0),
         LEIntField("FileIndex", 0),
-        LELongField("CreationTime", 0),
-        LELongField("LastAccessTime", 0),
-        LELongField("LastWriteTime", 0),
-        LELongField("LastChangeTime", 0),
+        NTTimeField("Created", 0),
+        NTTimeField("LastAccess", 0),
+        NTTimeField("LastWrite", 0),
+        NTTimeField("Change", 0),
         LELongField("EndOfFile", 0),
         LELongField("AllocationSize", 0),
         FlagsField("ExtFileAttributes", SMB_EXT_ATTR_ARCHIVE, -32, SMB_ExtFileAttributes),
@@ -1720,10 +1720,10 @@ class SMB_SET_FILE_BASIC_INFO_STRUCT(Packet):
     name = "SMB Set File Basic Info"
     infoLvl = SMB_SET_FILE_BASIC_INFO
     fields_desc = [
-        LELongField("CreationTime", 0),
-        LELongField("LastAccessTime", 0),
-        LELongField("LastWriteTime", 0),
-        LELongField("ChangeTime", 0),
+        NTTimeField("Created", 0),
+        NTTimeField("LastAccess", 0),
+        NTTimeField("LastWrite", 0),
+        NTTimeField("Change", 0),
         FlagsField("ExtFileAttributes", 0, -32, SMB_ExtFileAttributes),
         LEIntField("Reserved", 0),
     ]
@@ -1804,10 +1804,10 @@ class SMB_STRUCT_QUERY_FILE_STANDARD_INFO(Packet):
 class SMB_STRUCT_QUERY_FILE_BASIC_INFO(Packet):
     name = "SMB Query File Basic Info"
     fields_desc = [
-        LELongField("CreationTime", 0),#363011174825242212),
-        LELongField("LastAccessTime", 0),#363011174825242212),
-        LELongField("LastWriteTime", 0),#363011174825242212),
-        LELongField("LastChangeTime", 0),#363011174825242212),
+        NTTimeField("Created", 0),#363011174825242212),
+        NTTimeField("LastAccess", 0),#363011174825242212),
+        NTTimeField("LastWrite", 0),#363011174825242212),
+        NTTimeField("Change", 0),#363011174825242212),
         FlagsField("ExtFileAttributes", 0, -32, SMB_ExtFileAttributes),
         LEIntField("Reserved", 0),
     ]

@@ -47,7 +47,6 @@ from .include.asn1.ber import BER_len_dec, BER_len_enc, BER_identifier_dec
 from .include.asn1.ber import BER_CLASS_APP, BER_CLASS_CON,BER_identifier_enc
 from .include.asn1.ber import BER_Exception
 from dionaea.util import calculate_doublepulsar_opcode, xor
-from binascii import hexlify, unhexlify
 from collections import OrderedDict
 
 smblog = logging.getLogger('SMB')
@@ -342,7 +341,7 @@ class smbd(connection):
 
         if r:
             smblog.debug("response: %s" % r.summary())
-            r.show()
+            #r.show()
 
 #			i = incident("dionaea.module.python.smb.info")
 #			i.con = self
@@ -400,15 +399,15 @@ class smbd(connection):
             # Negociate Protocol -> Send response that supports minimal features in NT LM 0.12 dialect
             # (could be randomized later to avoid detection - but we need more dialects/options support)
             r = SMB_Negociate_Protocol_Response(
-                OemDomainName=self.config.oem_domain_name + "\0",
-                ServerName=self.config.server_name + "\0"
+                OemDomainName=self.config.oem_domain_name,  # + "\0",
+                ServerName=self.config.server_name  # + "\0"
             )
             # we have to select dialect
             c = 0
             tmp = p.getlayer(SMB_Negociate_Protocol_Request_Counts)
             while c < len(tmp.Requests):
                 request = tmp.Requests[c]
-                if request.BufferData.decode('ascii').find('NT LM 0.12') != -1:
+                if request.BufferData.find('NT LM 0.12') != -1:
                     break
                 c += 1
 
@@ -425,8 +424,8 @@ class smbd(connection):
 
             if p.haslayer(SMB_Sessionsetup_ESEC_AndX_Request):
                 r = SMB_Sessionsetup_ESEC_AndX_Response(
-                    NativeOS=self.config.native_os + "\0",
-                    NativeLanManager=self.config.native_lan_manager + "\0",
+                    NativeOS=self.config.native_os,
+                    NativeLanManager=self.config.native_lan_manager,
                     PrimaryDomain=self.config.primary_domain
                 )
                 self.clientCaps = p.getlayer(SMB_Sessionsetup_ESEC_AndX_Request).Capabilities
@@ -602,30 +601,42 @@ class smbd(connection):
 
             elif p.haslayer(SMB_Sessionsetup_AndX_Request2):
                 r = SMB_Sessionsetup_AndX_Response2(
-                    NativeOS=self.config.native_os + "\0",
-                    NativeLanManager=self.config.native_lan_manager + "\0",
-                    PrimaryDomain=self.config.primary_domain + "\0"
+                    NativeOS=self.config.native_os,
+                    NativeLanManager=self.config.native_lan_manager,
+                    PrimaryDomain=self.config.primary_domain
                 )
+                uid = len(self.sessionTable.keys())
+                smbh.UID = uid
+                self.sessionTable[uid] = {
+                    "IsAnonymous": True,
+                    "UID": uid,
+                    "UserName": "",
+                    "CreationTime": "",
+                    "IdleTime": "",
+                }
+                smblog.info('Guest session established')
 
             else:
                 smblog.warn("Unknown Session Setup Type used")
                 
         elif Command == SMB_COM_TREE_CONNECT_ANDX:
-            respParam = SMB_Treeconnect_AndX_Response()
+
             reqParam = p.getlayer(SMB_Treeconnect_AndX_Request)
-#			print ("Service : %s" % h.Path)
-            # for SMB_Treeconnect_AndX_Request.Flags = 0x0008
-            if reqParam.Flags & 0x08:
+            if reqParam.Flags & 0x0008:
                 respParam = SMB_Treeconnect_AndX_Response_Extended()
+            else:
+                respParam = SMB_Treeconnect_AndX_Response()
 
             # get Path as ascii string
-            f,v = reqParam.getfield_and_val("Path")
-            shareName = f.i2repr(reqParam,v) 
+            #f, v = reqParam.getfield_and_val("Path")
+            #shareName = f.i2repr(reqParam, v)
+            shareName = reqParam.Path
+            #shareName = shareName.strip("\x00")
+            #shareName = shareName.strip(" ")
             shareName = shareName.split('\\')[-1]
-            shareName = shareName.strip("\x00").strip(" ")#.strip("$")
 
             if shareName == 'ADMIN$' or shareName == 'C$':
-                rstatus = 0xc0000022 #STATUS_ACCESS_DENIED
+                rstatus = 0xc0000022  # STATUS_ACCESS_DENIED
                 smblog.warn('Connection attempt to hidden admin share')
             # support for CVE-2017-7494 Samba SMB RCE
 #            elif h.Path[-6:] == b'share\0':
@@ -634,7 +645,7 @@ class smbd(connection):
 #                r.Service = "A:\0"
 #                r.NativeFileSystem = "NTFS\0"
             elif shareName in self.sharesTable:
-                respParam.NativeFileSystem = self.sharesTable[shareName]["NativeFS"].encode("utf-16le") 
+                respParam.NativeFileSystem = self.sharesTable[shareName]["NativeFS"]
                 respParam.Service = self.sharesTable[shareName]["Service"] 
                 
                 tid = len(self.treeConTable.keys()) 
@@ -704,8 +715,7 @@ class smbd(connection):
 
 #            f,v = reqParam.getfield_and_val("FileName")
 #            fileName = f.i2repr(reqParam,v)
-            fileName = fs.path.normpath(reqParam.FileName.decode('utf-16le'))
-            fileName = fileName.strip("\x00").strip(" ")
+            fileName = reqParam.FileName
             fileName = fileName.replace("\\", "/")
  
             if self.treeConTable[reqHeader.TID]["Share"]["Service"] == SMB_SERVICE_NAMED_PIPE:
@@ -1028,14 +1038,13 @@ class smbd(connection):
 
             memFS = self.treeConTable[reqHeader.TID]["Share"]["FS"]
                     
-            oldFileName = reqParam.OldFileName.decode("utf-16le")
+            oldFileName = reqParam.OldFileName
             oldFileName = oldFileName.strip("\x00").strip(" ")
             oldFileName = oldFileName.replace("\\", "/")
             searchPattern = oldFileName.split("/")[-1]
             dirPath = oldFileName[:-len(searchPattern)]
-            # TODO if FileName is empty return all files in the current? dir
 
-            newFileName = reqParam.NewFileName.decode("utf-16le")
+            newFileName = reqParam.NewFileName
             newFileName = newFileName.strip("\x00").strip(" ")
             newFileName = newFileName.replace("\\", "/")
 
@@ -1073,9 +1082,6 @@ class smbd(connection):
             i.old = oldFileName
             i.status = rstatus
             i.report()
-
-            
-
         elif Command == SMB_COM_TRANSACTION:
             h = p.getlayer(SMB_Trans_Request)
             r = SMB_Trans_Response()
@@ -1084,9 +1090,9 @@ class smbd(connection):
             TransactionName = h.TransactionName
             if type(TransactionName) == bytes:
                 if smbh.Flags2 & SMB_FLAGS2_UNICODE:
-                    TransactionName = TransactionName.decode('utf-16')
+                    TransactionName = TransactionName#.decode('utf-16')
                 else:
-                    TransactionName = TransactionName.decode('ascii')
+                    TransactionName = TransactionName#.decode('ascii')
 
             if TransactionName[-1] == '\0':
                 TransactionName = TransactionName[:-1]
@@ -1250,14 +1256,13 @@ class smbd(connection):
             elif h.Setup[0] == SMB_TRANS2_QUERY_FS_INFORMATION:
                 r = SMB_Trans2_Final_Response()
                 r.Param = SMB_Trans2_QUERY_FS_INFO_Response_Param()
-                r.Data = []
                 reqParam = p.getlayer(SMB_Trans2_QUERY_FS_INFORMATION_Request)
                 infoLvl = reqParam.InformationLevel
                 freeUnits = self.TotalAllocationUnits - int(self.fsSize/(self.BytesPerSector*self.SectorsPerAllocationUnit))
 
                 if infoLvl == SMB_QUERY_FS_VOLUME_INFO:
                     info = SMB_STRUCT_QUERY_FS_VOLUME_INFO()
-                    info.VolumeLabel = "DISK A".encode("utf-16le")
+                    info.VolumeLabel = "DISK A"
                 elif infoLvl == SMB_QUERY_FS_SIZE_INFO:
                     info = SMB_STRUCT_QUERY_FS_SIZE_INFO()
                     info.TotalAllocationUnits = self.TotalAllocationUnits 
@@ -1268,7 +1273,7 @@ class smbd(connection):
                     info = SMB_STRUCT_QUERY_FS_DEVICE_INFO()
                 elif infoLvl == SMB_QUERY_FS_ATTRIBUTE_INFO:
                     info = SMB_STRUCT_QUERY_FS_ATTRIBUTE_INFO()
-                    info.FileSystemName = self.treeConTable[reqHeader.TID]["Share"]["NativeFS"].encode("utf-16le")
+                    info.FileSystemName = self.treeConTable[reqHeader.TID]["Share"]["NativeFS"]
                 else:
                     info = SMB_STRUCT_QUERY_FULL_FS_SIZE_INFO()
                     info.TotalAllocationUnits = self.TotalAllocationUnits 
@@ -1276,17 +1281,16 @@ class smbd(connection):
                     info.ActualFreeAllocationUnits = freeUnits 
                     info.SectorsPerAllocationUnit = self.SectorsPerAllocationUnit 
                     info.BytesPerSector = self.BytesPerSector 
-                r.Data.append(info)
+                #r.Data.append(info)
+                r = r/info
                 smblog.info('Query FS info')
                 i = incident("dionaea.modules.python.smb.queryfs")
                 i.con = self
                 i.status = rstatus
                 i.report()
 
-               
             elif h.Setup[0] == SMB_TRANS2_QUERY_FILE_INFORMATION or h.Setup[0] == SMB_TRANS2_QUERY_PATH_INFORMATION:
                 resp = SMB_Trans2_Final_Response()
-                resp.Data = []
                 resp.Param = SMB_Trans2_QUERY_INFO_Response_Param()
                 memFS = self.treeConTable[reqHeader.TID]["Share"]["FS"]
 
@@ -1303,8 +1307,8 @@ class smbd(connection):
                         resp = SMB_Error_Response()
                     else:
                         reqParam = p.getlayer(SMB_Trans2_QUERY_PATH_INFO_Request)
-                        fileName = reqParam.FileName.decode("utf-16le")
-                        fileName = fileName.strip("\x00").strip(" ").replace("\\", "/")
+                        fileName = reqParam.FileName
+                        fileName = fileName.replace("\\", "/")
                         if fileName == "":
                             fileName == "/"
                         if not memFS.exists(fileName):
@@ -1328,19 +1332,19 @@ class smbd(connection):
                             info.ExtFileAttributes = SMB_EXT_ATTR_DIRECTORY
                         else:
                             info.ExtFileAttributes = SMB_EXT_ATTR_ARCHIVE
-                        resp.Data.append(info)
+                        resp = resp/info
                         info = SMB_STRUCT_QUERY_FILE_STANDARD_INFO()
                         info.AllocationSize = memFS.getsize(fileName) if isFile else 4096
                         info.EndOfFile = memFS.getsize(fileName) if isFile else 0
                         info.NumberOfLinks = 1
                         info.DeletePending = 0
                         info.Directory = memFS.isdir(fileName) if isFile else 0
-                        resp.Data.append(info)
+                        resp = resp/info
                         info = SMB_STRUCT_QUERY_FILE_EA_INFO()
                         info.EaSize = 0
-                        resp.Data.append(info)
+                        resp = resp/info
                         info = SMB_STRUCT_QUERY_FILE_NAME_INFO()
-                        info.FileName = fileName.split("/")[-1].encode("utf-16le")
+                        info.FileName = fileName.split("/")[-1]
                     elif infoLvl == SMB_QUERY_FILE_BASIC_INFO or infoLvl == 1004:
                         info = SMB_STRUCT_QUERY_FILE_BASIC_INFO()
                         details = memFS.getinfo(fileName, namespaces=["details"])
@@ -1364,15 +1368,15 @@ class smbd(connection):
                         info.EaSize = 0
                     elif infoLvl == SMB_QUERY_FILE_NAME_INFO or infoLvl == SMB_QUERY_FILE_ALT_NAME_INFO:
                         info = SMB_STRUCT_QUERY_FILE_NAME_INFO()
-                        info.FileName = fileName.split("/")[-1].encode("utf-16le")
+                        info.FileName = fileName.split("/")[-1]
                     elif infoLvl == SMB_QUERY_FILE_INTERNAL_INFO:
                         info = SMB_STRUCT_QUERY_FILE_INTERNAL_INFO()
                     elif infoLvl == SMB_QUERY_FILE_STREAM_INFO or infoLvl == 1022:
                         info = SMB_STRUCT_QUERY_FILE_STREAM_INFO()
                         info.StreamSize = info.StreamAllocationSize = memFS.getsize(fileName)
                         if not memFS.isdir(fileName):
-                            info.StreamName = "::$DATA".encode("utf-16le")
-                    resp.Data.append(info)
+                            info.StreamName = "::$DATA"
+                    resp = resp/info
 
                 i = incident("dionaea.modules.python.smb.queryfile")
                 i.informationlvl = infoLvl
@@ -1443,7 +1447,6 @@ class smbd(connection):
             elif h.Setup[0] == SMB_TRANS2_FIND_FIRST2:
                 # info levels MS-CIFS p.64
                 resp = SMB_Trans2_Final_Response()
-                resp.Data = []
                 resp.Param = SMB_Trans2_FIND_FIRST2_Response_Param()
                 #respData = SMB_Trans2_FIND_FIRST2_Response_Data()
                 reqData = p.getlayer(SMB_Trans2_FIND_FIRST2_Request)
@@ -1458,9 +1461,8 @@ class smbd(connection):
                 #searchCount = reqData.SearchCount 
                 #flags = reqData.Flags 
                 informationLevel = reqData.InformationLevel
-                fileName = reqData.FileName.decode("utf-16le")
-
                 memFS = self.treeConTable[reqHeader.TID]["Share"]["FS"]
+                fileName = reqData.FileName
                 fileName = fileName.strip("\x00").strip(" ")
                 fileName = fileName.replace("\\", "/")
                 searchPattern = fileName.split("/")[-1]
@@ -1468,17 +1470,14 @@ class smbd(connection):
                 # TODO if FileName is empty return all files in the current? dir
                 smblog.info('Listing %s in %s' % (searchPattern, dirPath)) 
 
-                gen = memFS.filterdir(dirPath, files=[searchPattern], dirs=[searchPattern], exclude_dirs=excludeDirs)
-                searchResults = [n for n in gen]
-                if not searchResults:
-                    rstatus = STATUS_NO_SUCH_FILE
-                    
+                searchResults = memFS.filterdir(dirPath, files=[searchPattern], dirs=[searchPattern], exclude_dirs=excludeDirs)
+
                 resp.Param.SearchCount = 0
 
                 for file in searchResults:
                     #if reqData.InformationLevel == SMB_FIND_FILE_BOTH_DIRECTORY_INFO:
                     info = SMB_STRUCT_FIND_FILE_BOTH_DIRECTORY_INFO()
-                    info.FileName = file.name.encode("utf-16le") 
+                    info.FileName = file.name
                     fullPath = fs.path.join(dirPath, file.name)
                     details = memFS.getinfo(fullPath, namespaces=["details"])
                     info.Created = details.created
@@ -1490,14 +1489,13 @@ class smbd(connection):
                     if memFS.isdir(fullPath):
                         info.ExtFileAttributes = SMB_EXT_ATTR_DIRECTORY
                     else:
-                        # or SMB_EXT_ATTR_ARCHIVE
                         info.ExtFileAttributes = SMB_EXT_ATTR_ARCHIVE
 
-                    if (len(searchResults)-1) > searchResults.index(file):
-                        info.NextEntryOffset = 94 + len(info.FileName) 
-
-                    resp.Data.append(info)
+                    resp = resp/info
                     resp.Param.SearchCount += 1
+
+                if resp.Param.SearchCount == 0:
+                    rstatus = STATUS_NO_SUCH_FILE
 
                 # TODO if InfoLevel QUERY_EAS...
                 # TODO implement Search open table
@@ -1516,7 +1514,7 @@ class smbd(connection):
             resp = SMB_Delete_Response()
 
             memFS = self.treeConTable[reqHeader.TID]["Share"]["FS"]
-            fileName = reqParam.FileName.decode("utf-16le")
+            fileName = reqParam.FileName
             fileName = fileName.strip("\x00").strip(" ")
             fileName = fileName.replace("\\", "/")
             searchPattern = fileName.split("/")[-1]
@@ -1551,7 +1549,7 @@ class smbd(connection):
             resp = SMB_Delete_Response()
 
             memFS = self.treeConTable[reqHeader.TID]["Share"]["FS"]
-            dirName = reqParam.DirName.decode("utf-16le")
+            dirName = reqParam.DirName
             dirName = dirName.strip("\x00").strip(" ")
             dirName = dirName.replace("\\", "/")
 

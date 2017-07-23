@@ -641,7 +641,8 @@ class MultiFieldLenField(Field):
             for fieldname in self.length_of:
                 fld,fval = pkt.getfield_and_val(fieldname)
                 f = fld.size(pkt, fval)
-                l += self.adjust(pkt,f)
+                l += f
+            l = self.adjust(pkt,l)
 #        print("MultiFIeldLenField %i" % l)
         return l
 
@@ -681,12 +682,36 @@ class StrNullField(StrField):
         if l < 0:
             #XXX \x00 not found
             return "",s
-#        return s[l+1:],self.m2i(pkt, s[:l])
-        return s[l+1:],s[:l+1]
+        return s[l+1:],self.m2i(pkt, s[:l+1])
+        #return s[l+1:],s[:l+1]
     def randval(self):
         return RandTermString(RandNum(0,1200),"\x00")
     def size(self, pkt, val):
         return len(self.i2m(pkt,val))
+    #def i2h(self, pkt, x):
+    #    if x is None:
+    #        x = ''
+    #    elif type(x) is bytes:
+    #        x=x.decode('ascii')
+    #    eos = x.find('\0')
+    #    return x[:eos]
+    def i2m(self, pkt, x):
+        if x is None:
+            x = "\0"
+        elif type(x) is str:
+            x = x + "\0"
+        elif type(x) is not bytes:
+            x = str(x) + "\0"
+        x = x.encode('ascii')
+        return x
+
+    def m2i(self, pkt, x):
+        if x is None:
+            x = ''
+        elif type(x) is bytes:
+            x = x.decode('ascii')
+        eos = x.find('\0')
+        return x[:eos]
 
 class UnicodeNullField(StrField):
     # machine representation is bytes
@@ -727,29 +752,37 @@ class UnicodeNullField(StrField):
         eos += 2
 
         if len(s) >= eos:
-            return s[eos:],s[:eos]
+            return s[eos:], self.m2i(pkt, s[:eos])
         else:
-            return s[eos:],b''
+            return s[eos:], ''
 
     def i2m(self, pkt, x):
         #        print(type(x))
-        #        print(x)
         if x is None:
             x = b"\0\0"
         elif type(x) is str:
+            x = x + "\0"
             x = x.encode('utf-16')[2:]
         elif type(x) is not bytes:
-            x=str(x).encode('utf-16')[2:]
-#        print(x)
+            x = str(x) + "\0"
+            x = x.encode('utf-16')[2:]
         return x
 
-    def i2repr(self, pkt, x):
+    def m2i(self, pkt, x):
         if x is None:
-            x = b''
+            x = ''
         elif type(x) is bytes:
-            x=x.decode('utf-16')
+            x = x.decode('utf-16le')
         eos = x.find('\0')
         return x[:eos]
+
+    #def i2repr(self, pkt, x):
+    #    if x is None:
+    #        x = b''
+    #    elif type(x) is bytes:
+    #        x=x.decode('utf-16')
+    #    eos = x.find('\0')
+    #    return x[:eos]
 
     def size(self, pkt, x):
         return len(self.i2m(pkt,x))
@@ -773,6 +806,8 @@ class StrStopField(StrField):
         return RandTermString(RandNum(0,1200),self.stop)
 
 class LenField(Field):
+    def __init__(self, name, fmt="H"):
+        StrField.__init__(self, name, None, fmt=fmt)
     def i2m(self, pkt, x):
         if x is None:
             x = len(pkt.payload)

@@ -783,6 +783,28 @@ class SMBNullField(StrField):
         else:
             return StrNullField.i2m(self, pkt, s)
 
+    def m2i(self, pkt, s):
+        smbhdr = pkt
+        while not isinstance(smbhdr, SMB_Header) and smbhdr != None:
+            smbhdr = smbhdr.underlayer
+
+        if smbhdr and smbhdr.Flags2 & 0x8000:
+            return UnicodeNullField.m2i(self, pkt, s)
+        else:
+            return StrNullField.m2i(self, pkt, s)
+
+    #def i2h(self, pkt, s):
+    #    smbhdr = pkt
+    #    while not isinstance(smbhdr, SMB_Header) and smbhdr != None:
+    #        smbhdr = smbhdr.underlayer
+    #        smbhdr = smbhdr.underlayer
+
+    #    if smbhdr and smbhdr.Flags2 & 0x8000:
+    #        return UnicodeNullField.i2h(self, pkt, s)
+    #    else:
+    #        return StrNullField.i2h(self, pkt, s)
+
+
     def i2repr(self, pkt, s):
         smbhdr = pkt
         while not isinstance(smbhdr, SMB_Header) and smbhdr != None:
@@ -803,9 +825,31 @@ class SMBNullField(StrField):
         else:
             return StrNullField.size(self, pkt, s)
 
+class SMBLenField(StrLenField):
+    def __init__(self, name, default, length_from=None):
+        StrLenField.__init__(self, name, default, length_from=length_from)
 
+    def i2m(self, pkt, s):
+        smbhdr = pkt
+        while not isinstance(smbhdr, SMB_Header) and smbhdr != None:
+            smbhdr = smbhdr.underlayer
+        if smbhdr and smbhdr.Flags2 & 0x8000:
+            return StrLenField.i2m(self, pkt, s.encode("utf-16le"))
+        else:
+            return StrLenField.i2m(self, pkt, s.encode("ascii"))
 
+    def m2i(self, pkt, s):
+        smbhdr = pkt
+        while not isinstance(smbhdr, SMB_Header) and smbhdr != None:
+            smbhdr = smbhdr.underlayer
 
+        if smbhdr and smbhdr.Flags2 & 0x8000:
+            return StrLenField.m2i(self, pkt, s.decode("utf-16le"))
+        else:
+            return StrLenField.m2i(self, pkt, s.decode("ascii"))
+
+    def i2len(self, pkt, x):
+        return len(x.encode("utf-16le"))
 
 
 class UUIDField(StrFixedLenField):
@@ -1172,7 +1216,7 @@ class SMB_Treeconnect_AndX_Response(Packet):
         MultiFieldLenField(
             "ByteCount", None, fmt='<H', length_of=("Service","NativeFileSystem")),
         StrNullField("Service","IPC"),
-        StrNullField("NativeFileSystem",""),
+        SMBNullField("NativeFileSystem",""),
     ]
 
 #[MS-SMB].pdf
@@ -1193,9 +1237,9 @@ class SMB_Treeconnect_AndX_Response_Extended(Packet):
         MultiFieldLenField("ByteCount", None, fmt='<H', length_of=(
             "Service","Padding","NativeFileSystem")),
         StrNullField("Service","IPC"),
-        ConditionalField(StrFixedLenField(
-            "Padding", b'\0', 2), lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
-        StrNullField("NativeFileSystem",""),
+        ConditionalField(StrFixedLenField("Padding", b'\0', 1),
+                lambda x:(49 + len(x.Service) + 1) % 2 and x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+        SMBNullField("NativeFileSystem",""),
     ]
 
 # Used when the error's return is needed
@@ -1417,10 +1461,10 @@ class SMB_Rename_Request(Packet):
         FlagsField("SearchAttributes", 0, -16, SMB_FileAttributes),
         LEShortField("ByteCount", 0),
         ByteField("BufferFormat", 4),
-        SMBNullField("OldFileName", b"\x00", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+        SMBNullField("OldFileName", None, utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
         ByteField("BufferFormat2", 4),
         ByteField("Reserved", 0),
-        SMBNullField("NewFileName", b"\x00", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+        SMBNullField("NewFileName", None, utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
     ]
 
 
@@ -1576,7 +1620,7 @@ class SMB_STRUCT_QUERY_FS_VOLUME_INFO(Packet):
         LEIntField("SerialNumber", 132),
         FieldLenField("VolumeLabelSize", None, fmt="<I", length_of="VolumeLabel"),
         LEShortField("Reserved", 0),
-        StrField("VolumeLabel", ""),
+        SMBLenField("VolumeLabel", None, length_from=lambda x:x.VolumeLabelSize),
     ]
 
 
@@ -1611,7 +1655,7 @@ class SMB_STRUCT_QUERY_FS_ATTRIBUTE_INFO(Packet):
         LEIntField("FileSystemAttributes", 0), 
         LEIntField("MaxFileNameLengthInBytes", 255), 
         FieldLenField("LengthOfFileSystemName", None, fmt="<I", length_of="FileSystemName"), 
-        StrLenField("FileSystemName", None),
+        SMBLenField("FileSystemName", None),
     ]
 
 #class SMB_STRUCT_INFO_ALLOCATION(Packet):
@@ -1620,8 +1664,7 @@ class SMB_STRUCT_QUERY_FS_ATTRIBUTE_INFO(Packet):
 class SMB_STRUCT_FIND_FILE_BOTH_DIRECTORY_INFO(Packet):
     name = "SMB Find File Both Directory Info"
     fields_desc = [
-        #FieldLenField("NextEntryOffset", None, fmt="<I", length_of="FileName", adjust = lambda pkt,x:x+94 if pkt.hasNext else 0),
-        LEIntField("NextEntryOffset", 0),
+        FieldLenField("NextEntryOffset", None, fmt="<I", length_of="FileName", adjust=lambda pkt, x:x+94 if pkt.payload else 0),
         LEIntField("FileIndex", 0),
         NTTimeField("Created", 0),
         NTTimeField("LastAccess", 0),
@@ -1634,9 +1677,8 @@ class SMB_STRUCT_FIND_FILE_BOTH_DIRECTORY_INFO(Packet):
         LEIntField("EaSize", 0),
         ByteField("ShortNameLength", 0),
         ByteField("Reserved", 0),
-        StrFixedLenField("ShortName", 0, length=24),
-        #SMBNullField("ShortName", None, utf16=lambda x:x.getlayer(SMB_Header).Flags2 & SMB_FLAGS2_UNICODE),
-        StrField("FileName", None),# length_from=lambda x:x.FileNameLength),# utf16=lambda x:x.getlayer(SMB_Header).Flags2 & SMB_FLAGS2_UNICODE),
+        StrFixedLenField("ShortName", b"\0", length=24),
+        SMBLenField("FileName", None, length_from=lambda x:x.FileNameLength),
     ]
 
 ##
@@ -1822,7 +1864,7 @@ class SMB_STRUCT_QUERY_FILE_NAME_INFO(Packet):
     name = "SMB Query File EA Info"
     fields_desc = [
         FieldLenField("FileNameLength", None, length_of="FileName", fmt="<I"),
-        StrField("FileName", None),
+        SMBLenField("FileName", None, length_from=lambda pkt:pkt.FileNameLength),
     ]
 
 
@@ -1833,7 +1875,7 @@ class SMB_STRUCT_QUERY_FILE_STREAM_INFO(Packet):
         FieldLenField("StreamNameLength", None, length_of="StreamName", fmt="<I"),
         LELongField("StreamSize", 0),
         LELongField("StreamAllocationSize", 0),
-        StrLenField("StreamName", None),
+        SMBLenField("StreamName", "", length_from=lambda pkt:pkt.StreamNameLength),
     ]
 
 
@@ -1924,7 +1966,7 @@ class SMB_Trans2_QUERY_PATH_INFO_Request(Packet):
         StrFixedLenField("Pad", b"", length_from=lambda x:x.lengthfrom_Pad()),
         XLEShortField("InformationLevel", 0),
         LEIntField("Reserved", 0),
-        StrField("FileName", 0),
+        SMBNullField("FileName", 0),
         StrFixedLenField("Pad1", b"", length_from=lambda x:x.lengthfrom_Pad1()),
         ConditionalField(StrLenField("GetEAList", b"", length_from=lambda x: x.underlayer.DataCount), lambda x:x.InformationLevel==SMB_INFO_QUERY_EAS_FROM_LIST)
     ]
@@ -1992,7 +2034,7 @@ class SMB_Trans2_FIND_FIRST2_Request(Packet):
         FlagsField("Flags", 0, -16, SMB_Trans2_FIND_FIRST2_Flags),
         XLEShortField("InformationLevel", 0),
         LEIntField("SearchStorageType",0),
-        StrFixedLenField("FileName", b"", length_from=lambda x: x.underlayer.ParamCount-12),
+        SMBNullField("FileName", b""),  #, length_from=lambda x: x.underlayer.ParamCount-12),
         StrFixedLenField("Pad1", b"", length_from=lambda x:x.lengthfrom_Pad1()),
         ConditionalField(StrLenField("GetEAList", b"", length_from=lambda x: x.underlayer.DataCount), lambda x:x.InformationLevel==SMB_INFO_QUERY_EAS_FROM_LIST)
     ]
@@ -2048,23 +2090,25 @@ class SMB_Trans2_Final_Response(Packet):
         #ByteField("WordCount",10),
         FieldLenField("WordCount", None, fmt="B", count_of="Setup", adjust=lambda pkt,x:x+10), 
         FieldLenField("TotalParamCount", None, fmt='<H', length_of="Param"),
-        FieldLenField("TotalDataCount", None, fmt="<H", length_of="Data"), 
+        #FieldLenField("TotalDataCount", None, fmt="<H", length_of="Data", adjust=lambda pkt,x:x+len(pkt.payload)),
+        LenField("DataCount", fmt="<H"),
         LEShortField("Reserved1",0),
         FieldLenField("ParamCount", None, fmt='<H', length_of="Param"),
         FieldLenField("ParamOffset", None, fmt='<H', count_of="Setup", adjust=lambda pkt,x:pkt.calcParamOffset(x)),
         LEShortField("ParamDisplacement",0),
-        FieldLenField("DataCount", None, fmt="<H", length_of="Data"), 
+        #FieldLenField("DataCount", None, fmt="<H", length_of="Data", adjust=lambda pkt,x:x+len(pkt.payload)),
+        LenField("DataCount", fmt="<H"),
         FieldLenField("DataOffset", None, fmt="<H", length_of="Setup", adjust=lambda pkt,x:pkt.calcDataOffset(x)),
         LEShortField("DataDisplacement",0),
         FieldLenField("SetupCount", None, fmt="<B", count_of="Setup"), 
         #ByteField("SetupCount",1), 
         ByteField("Reserved2",0), 
         FieldListField("Setup", None, LEShortEnumField("", None, SMB_Trans2_Commands)),# count_from = lambda pkt: pkt.setup()),
-        MultiFieldLenField("ByteCount", None, fmt='<H', length_of=("Pad1","Param","Pad2","Data")),
+        MultiFieldLenField("ByteCount", None, fmt='<H', length_of=("Pad1","Param","Pad2"), adjust=lambda pkt,x:x+len(pkt.payload)),
         StrFixedLenField("Pad1", None, length_from=lambda x:x.lengthfrom_Pad1()),
         PacketField("Param", None, Packet),
         StrFixedLenField("Pad2", None, length_from=lambda x:x.lengthfrom_Pad2()),
-        PacketListField("Data", None, PacketField("", None, Packet)),
+        #PacketListField("Data", None, PacketField("", None, Packet)),
     ]
 
 
@@ -2342,11 +2386,11 @@ class SMB_Delete_Request(Packet):
     name = "SMB Delete Request"
     smb_cmd = SMB_COM_DELETE #0x06
     fields_desc = [
-        ByteField("WordCount",1),
+        ByteField("WordCount", 1),
         FlagsField("SearchAttributes", 0, -16, SMB_FileAttributes),
         FieldLenField("ByteCount", 1, fmt='<H', length_of="FileName"),
-        ByteField("BufferFormat",4),
-        StrLenField("FileName", None, length_from=lambda x:x.ByteCount-1),
+        ByteField("BufferFormat", 4),
+        SMBNullField("FileName", None),# length_from=lambda x:x.ByteCount-1),
     ]
 
 class SMB_Delete_Response(Packet):
@@ -2359,12 +2403,12 @@ class SMB_Delete_Response(Packet):
 
 class SMB_Delete_Directory_Request(Packet):
     name = "SMB Delete Request"
-    smb_cmd = SMB_COM_DELETE #0x06
+    smb_cmd = SMB_COM_DELETE_DIRECTORY
     fields_desc = [
-        ByteField("WordCount",1),
+        ByteField("WordCount", 1),
         FieldLenField("ByteCount", 1, fmt='<H', length_of="FileName"),
-        ByteField("BufferFormat",4),
-        StrLenField("DirName", None, length_from=lambda x:x.ByteCount-1),
+        ByteField("BufferFormat", 4),
+        SMBNullField("DirName", None),# length_from=lambda x:x.ByteCount-1),
     ]
 
 class DCERPC_Header(Packet):

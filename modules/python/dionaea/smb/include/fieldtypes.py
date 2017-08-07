@@ -762,10 +762,12 @@ class UnicodeNullField(StrField):
             x = b"\0\0"
         elif type(x) is str:
             x = x + "\0"
-            x = x.encode('utf-16')[2:]
+            x = x.encode('utf-16le')
+            #x = x.encode('utf-16')[2:]
         elif type(x) is not bytes:
             x = str(x) + "\0"
-            x = x.encode('utf-16')[2:]
+            x = x.encode('utf-16le')
+            #x = x.encode('utf-16')[2:]
         return x
 
     def m2i(self, pkt, x):
@@ -785,6 +787,10 @@ class UnicodeNullField(StrField):
     #    return x[:eos]
 
     def size(self, pkt, x):
+        return len(self.i2m(pkt,x))
+
+    def i2len(self, pkt, x):
+        print(len(self.i2m(pkt,x)))
         return len(self.i2m(pkt,x))
 
     def randval(self):

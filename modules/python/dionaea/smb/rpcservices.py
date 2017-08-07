@@ -3382,6 +3382,7 @@ class SRVSVC(RPCService):
         #	NET_API_STATUS NetrShareEnum(
         #	  [in, string, unique] SRVSVC_HANDLE ServerName,
         #	  [in, out] LPSHARE_ENUM_STRUCT InfoStruct,
+
         #	  [in] DWORD PreferedMaximumLength,
         #	  [out] DWORD* TotalEntries,
         #	  [in, out, unique] DWORD* ResumeHandle

@@ -34,7 +34,7 @@ import logging
 import os
 import tempfile
 import fs.memoryfs
-from uuid import UUID
+from uuid import UUID, uuid3, uuid1, NAMESPACE_OID
 
 from .include.smbfields import *
 from .rpcservices import __shares__
@@ -48,6 +48,7 @@ from .include.asn1.ber import BER_CLASS_APP, BER_CLASS_CON,BER_identifier_enc
 from .include.asn1.ber import BER_Exception
 from dionaea.util import calculate_doublepulsar_opcode, xor
 from collections import OrderedDict
+from .ransomware import * 
 
 smblog = logging.getLogger('SMB')
 
@@ -61,7 +62,7 @@ STATE_NTREAD = 5
 registered_services = {}
 
 fsLimit = 60000000
-activeConLimit = 2
+activeConLimit = 5
 conCacheLimit = 5
 
 conCache = OrderedDict() 
@@ -100,34 +101,40 @@ class smbd(connection):
 
 
         
-        defaultShares = {
-            "MYSHARE": {
-                "Name": "MYSHARE",
-                "Comment": "tesasdfads",
-                "Path": "/home/felix/testshare",
-                "Service": SMB_SERVICE_DISK_SHARE,
-                "Type": 0x00000000,
-                "FS": fs.memoryfs.MemoryFS(), 
-                "NativeFS": "NTFS",
-            },
-            "IPC$": {
-                "Name": "IPC$",
-                "Comment": "IPC",
-                "Path": "/",
-                "Service": SMB_SERVICE_NAMED_PIPE,
-                "Type": 0x00000003, 
-                "FS": fs.memoryfs.MemoryFS(),
-                "NativeFS": ""
+
+        if self.remote.host in conCache:
+            conData = conCache.pop(self.remote.host)
+            self.sharesTable = conData["Shares"]
+            self.rwDetection = conData["Detection"]
+        else:
+            self.sharesTable = {
+                "MYSHARE": {
+                    "Name": "MYSHARE",
+                    "Comment": "tesasdfads",
+                    "Path": "/home/felix/testshare",
+                    "Service": SMB_SERVICE_DISK_SHARE,
+                    "Type": 0x00000000,
+                    "FS": fs.memoryfs.MemoryFS(), 
+                    "NativeFS": "NTFS",
+                },
+                "IPC$": {
+                    "Name": "IPC$",
+                    "Comment": "IPC",
+                    "Path": "/",
+                    "Service": SMB_SERVICE_NAMED_PIPE,
+                    "Type": 0x00000003, 
+                    "FS": fs.memoryfs.MemoryFS(),
+                    "NativeFS": ""
+                }
             }
-        }
-        memFS = defaultShares["MYSHARE"]["FS"]
-        memFS.makedirs("/Users/pete")
-        memFS.makedirs("/pictures/vacation")
-        memFS.setbytes("/Users/pete/attachement.txt", b"test")
-        memFS.setbytes("/Users/pete/password.txt", b"pete"*16)
-        memFS.setbytes("/Hello.txt", b"pete"*16)
+            memFS = self.sharesTable["MYSHARE"]["FS"]
+            memFS.makedirs("/Users/pete")
+            memFS.makedirs("/pictures/vacation")
+            memFS.setbytes("/Users/pete/attachement.txt", b"test")
+            memFS.setbytes("/Users/pete/password.txt", b"pete"*16)
+            memFS.setbytes("/Hello.txt", b"pete"*16)
+            self.rwDetection = RansomwareDetection(self.sharesTable)
  
-        self.sharesTable = conCache.pop(self.remote.host, defaultShares)
 
         self.fsSize = 0
         for share in self.sharesTable:
@@ -152,6 +159,7 @@ class smbd(connection):
         self.TotalAllocationUnits = int(fsLimit/(self.BytesPerSector*self.SectorsPerAllocationUnit)) 
         #self.CallerFreeAllocationUnits = self.TotalAllocationUnits 
         #self.ActualFreeAllocationUnits = self.TotalAllocationUnits 
+
      
         
         
@@ -167,6 +175,7 @@ class smbd(connection):
         #self.sharesTable = self.config.shares
         #rpcservices.__shares__ = self.config.shares
         rpcservices.OS_TYPE = self.config.os_type
+        self.rwDetection.apply_config(self.config)
 
     def handle_established(self):
         #		self.timeouts.sustain = 120
@@ -280,7 +289,7 @@ class smbd(connection):
             #SMB_COM_FIND                   ,
             #SMB_COM_FIND_UNIQUE            ,
             #SMB_COM_FIND_CLOSE             ,
-            #SMB_COM_NT_TRANSACT            ,
+            SMB_COM_NT_TRANSACT            ,
             #SMB_COM_NT_TRANSACT_SECONDARY  ,
             SMB_COM_NT_CREATE_ANDX         ,
             #SMB_COM_NT_CANCEL              ,
@@ -292,7 +301,7 @@ class smbd(connection):
             #SMB_COM_READ_BULK              ,
             #SMB_COM_WRITE_BULK             ,
             #SMB_COM_WRITE_BULK_DATA        ,
-            #SMB_COM_NONE                   ,
+            SMB_COM_NONE                   ,
         ]
  
         reqHeader = p.getlayer(SMB_Header)
@@ -312,6 +321,8 @@ class smbd(connection):
             r = NBTSession()/header/r
             self.send(r.build())
             return len(data)
+
+        
 
         # this is one of the things you have to love, it violates the spec, but
         # has to work ...
@@ -385,11 +396,8 @@ class smbd(connection):
         smbh.TID = reqHeader.TID
 
         
-        
-        
         if Command == SMB_COM_NEGOTIATE:
             global activeConCount
-            print(activeConCount)
             if activeConCount >= activeConLimit:
                 smbh.Status = STATUS_INSUFF_SERVER_RESOURCES
                 r = SMB_Error_Response()
@@ -421,7 +429,6 @@ class smbd(connection):
         # elif self.state == STATE_SESSIONSETUP and
         # p.getlayer(SMB_Header).Command == 0x73:
         elif Command == SMB_COM_SESSION_SETUP_ANDX:
-
             if p.haslayer(SMB_Sessionsetup_ESEC_AndX_Request):
                 r = SMB_Sessionsetup_ESEC_AndX_Response(
                     NativeOS=self.config.native_os,
@@ -603,7 +610,9 @@ class smbd(connection):
                 r = SMB_Sessionsetup_AndX_Response2(
                     NativeOS=self.config.native_os,
                     NativeLanManager=self.config.native_lan_manager,
-                    PrimaryDomain=self.config.primary_domain
+                    PrimaryDomain=self.config.primary_domain,
+                    Action=0,
+                    AndXOffset=209,
                 )
                 uid = len(self.sessionTable.keys())
                 smbh.UID = uid
@@ -620,7 +629,6 @@ class smbd(connection):
                 smblog.warn("Unknown Session Setup Type used")
                 
         elif Command == SMB_COM_TREE_CONNECT_ANDX:
-
             reqParam = p.getlayer(SMB_Treeconnect_AndX_Request)
             if reqParam.Flags & 0x0008:
                 respParam = SMB_Treeconnect_AndX_Response_Extended()
@@ -689,9 +697,16 @@ class smbd(connection):
                 #self.fileOpenTable[p.FID].unlink(self.fileOpenTable[p.FID].name)
                 if self.fileOpenTable[reqParam.FID]["Type"] == SMB_RES_DISK and self.fileOpenTable[reqParam.FID]["Handle"] != -1:
                     self.fileOpenTable[reqParam.FID]["Handle"].close()
+
+                    fileName = self.fileOpenTable[reqParam.FID]["FileName"]
+                    share = self.treeConTable[reqHeader.TID]["Share"]["Name"]
+                    self.rwDetection.new_file_op(FILE_OP_CLOSE, fileName, share)
+ 
                     if self.fileOpenTable[reqParam.FID]["DeletePending"]:
+                        self.rwDetection.new_file_op(FILE_OP_DELETE, fileName, share)
+                       
                         memFS = self.treeConTable[reqHeader.TID]["Share"]["FS"]
-                        memFS.remove(self.fileOpenTable[reqParam.FID]["FileName"])
+                        memFS.remove(fileName)
                 self.fileOpenTable.pop(reqParam.FID, None)
             else:
                 rstatus = STATUS_INVALID_HANDLE
@@ -810,8 +825,19 @@ class smbd(connection):
                         except Exception:
                             rstatus = STATUS_ACCESS_DENIED
                     else:
-                       fileHandle = memFS.openbin(fileName, mode)
-                       smblog.info("OPEN FILE! %s" % fileName)
+                        op = None
+                        if createAction == SMB_CREATDISP_FILE_SUPERSEDE or createAction == SMB_CREATDISP_FILE_OPEN_IF:
+                            op = FILE_OP_TRUNC
+                        if createAction == SMB_CREATDISP_FILE_OPEN:
+                            op = FILE_OP_OPEN
+                        if createAction == SMB_CREATDISP_FILE_CREATE:
+                            op = FILE_OP_CREATE
+                        if op:
+                            share = self.treeConTable[reqHeader.TID]["Share"]["Name"]
+                            self.rwDetection.new_file_op(op, fileName, share)
+
+                        fileHandle = memFS.openbin(fileName, mode)
+                        smblog.info("OPEN FILE! %s" % fileName)
 
                 # compile response
                 if rstatus == STATUS_SUCCESS:
@@ -918,7 +944,6 @@ class smbd(connection):
             if reqParam.FID in self.fileOpenTable and self.fileOpenTable[reqParam.FID] is not None:
                 if self.fileOpenTable[reqParam.FID]["Type"] == SMB_RES_DISK:
                     smblog.warn("WRITE FILE! %s"% self.fileOpenTable[reqParam.FID]["FileName"])
-
                     if len(reqParam.Data) > reqParam.DataLenLow:
                         # return error
                         pass
@@ -936,6 +961,12 @@ class smbd(connection):
                         icd.con = self
                         icd.report()
                     else:
+                        share = self.treeConTable[reqHeader.TID]["Share"]["Name"]
+                        fileName = self.fileOpenTable[reqHeader.FID]["FileName"]
+                        if offset >= self.sharesTable[share]["FS"].getsize(fileName):
+                            self.rwDetection.new_file_op(FILE_OP_WRITE, fileName, share)
+                        else:
+                            self.rwDetection.new_file_op(FILE_OP_OVERWRITE, fileName, share)
                         fileHandle = self.fileOpenTable[reqParam.FID]["Handle"]
                         fileHandle.seek(offset)
                         fileHandle.write(reqParam.Data)
@@ -979,6 +1010,10 @@ class smbd(connection):
             if not reqParam.FID in self.fileOpenTable:
                 rstatus = STATUS_INVALID_HANDLE
             elif self.fileOpenTable[reqHeader.FID]["Type"] == SMB_RES_DISK:
+                share = self.treeConTable[reqHeader.TID]["Share"]["Name"]
+                fileName = self.fileOpenTable[reqHeader.FID]["FileName"]
+                self.rwDetection.new_file_op(FILE_OP_READ, fileName, share)
+
 
                 offset = reqParam.Offset
                 if reqParam.WordCount == 0x0c:
@@ -1071,7 +1106,9 @@ class smbd(connection):
                         rstatus = STATUS_NO_SUCH_FILE
                 else:
                     memFS.move(path, newFileName)
-                            
+                    share = self.treeConTable[reqHeader.TID]["Share"]["Name"]
+                    self.rwDetection.new_file_op(FILE_OP_RENAME, path, share, new_file_name=newFileName)
+                           
 
             smblog.info('Move %s to %s' % (oldFileName, newFileName)) 
             r = resp
@@ -1274,6 +1311,9 @@ class smbd(connection):
                 elif infoLvl == SMB_QUERY_FS_ATTRIBUTE_INFO:
                     info = SMB_STRUCT_QUERY_FS_ATTRIBUTE_INFO()
                     info.FileSystemName = self.treeConTable[reqHeader.TID]["Share"]["NativeFS"]
+                elif infoLvl == SMB_QUERY_FS_OBJECT_ID_INFO:
+                    info = FILE_OBJECTID_BUFFER_1()
+                    info.ObjectId = uuid3(NAMESPACE_OID, self.treeConTable[reqHeader.TID]["Share"]["Name"]).bytes
                 else:
                     info = SMB_STRUCT_QUERY_FULL_FS_SIZE_INFO()
                     info.TotalAllocationUnits = self.TotalAllocationUnits 
@@ -1376,6 +1416,21 @@ class smbd(connection):
                         info.StreamSize = info.StreamAllocationSize = memFS.getsize(fileName)
                         if not memFS.isdir(fileName):
                             info.StreamName = "::$DATA"
+                    elif infoLvl == SMB_QUERY_FILE_NETWORK_OPEN_INFO:
+                        info = SMB_STRUCT_QUERY_FILE_NETWORK_OPEN_INFO()
+                        details = memFS.getinfo(fileName, namespaces=["details"])
+                        info.Created = details.created
+                        info.LastAccess = details.accessed
+                        info.LastWrite = details.modified
+                        info.Change = details.modified
+                        info.AllocationSize = memFS.getsize(fileName) if isFile else 4096
+                        info.EndOfFile = memFS.getsize(fileName) if isFile else 0
+                        if memFS.isdir(fileName):
+                            info.ExtFileAttributes = SMB_EXT_ATTR_DIRECTORY
+                        else:
+                            info.ExtFileAttributes = SMB_EXT_ATTR_ARCHIVE
+
+
                     resp = resp/info
 
                 i = incident("dionaea.modules.python.smb.queryfile")
@@ -1470,7 +1525,12 @@ class smbd(connection):
                 # TODO if FileName is empty return all files in the current? dir
                 smblog.info('Listing %s in %s' % (searchPattern, dirPath)) 
 
-                searchResults = memFS.filterdir(dirPath, files=[searchPattern], dirs=[searchPattern], exclude_dirs=excludeDirs)
+                searchResults = []
+                try:
+                    searchResults = memFS.filterdir(dirPath, files=[searchPattern], dirs=[searchPattern], exclude_dirs=excludeDirs)
+                except fs.errors.ResourceNotFound:
+                    rstatus = STATUS_OBJECT_PATH_NOT_FOUND
+
 
                 resp.Param.SearchCount = 0
 
@@ -1533,6 +1593,8 @@ class smbd(connection):
                 # and exclude RO
                 for item in searchResults:
                     fullPath = fs.path.join(dirPath, item.name)
+                    share = self.treeConTable[reqHeader.TID]["Share"]["Name"]
+                    self.rwDetection.new_file_op(FILE_OP_DELETE, fullPath, share)
                     # TODO check if file is open somewhere
                     memFS.remove(fullPath)
                     rstatus = STATUS_SUCCESS
@@ -1575,20 +1637,28 @@ class smbd(connection):
 
         elif Command == SMB_COM_TRANSACTION2_SECONDARY:
             h = p.getlayer(SMB_Trans2_Secondary_Request)
+            r = SMB_Error_Response()
             # TODO: need some extra works
             pass
-#        elif Command == SMB_COM_NT_TRANSACT:
-#            reqParam = p.getlayer(SMB_NT_Trans_Request)
-#            print(reqParam)
-#            #resp = SMB_NT_Trans_Final_Response()
-#            resp = SMB_Error_Response()
-#            rstatus = STATUS_NOT_SUPPORTED  # STATUS_SUCCESS
-#            #resp.Setup = NT_TRANSACT_IOCTL
-#            #resp.Data = "d66bccec63a511e7aed2525400123456499f7b0c90c3404bb6fef9f1b63c1685d66bccec63a511e7aed252540012345600000000000000000000000000000000" 
-#            #respParam.Data += "499f7b0c90c3404bb6fef9f1b63c1685" 
-#            #respParam.Data += "d66bccec63a511e7aed2525400123456" 
-#            #respParam.Data += "00000000000000000000000000000000" 
-#            r = resp
+        elif Command == SMB_COM_NT_TRANSACT:
+            reqParam = p.getlayer(SMB_NT_Trans_Request)
+            
+            resp = SMB_NT_Trans_Final_Response()
+            rstatus = STATUS_NOT_SUPPORTED 
+            resp.Setup = NT_TRANSACT_IOCTL
+            if reqParam.Function == NT_TRANSACT_IOCTL:
+                setup = SMB_NT_Trans_IOCTL_Request_Setup(reqParam.Setup)
+                file_name = self.fileOpenTable[setup.FID]["FileName"]
+                share_name = self.treeConTable[reqHeader.TID]["Share"]["Name"]
+                if setup.FunctionCode == 0x900C0:
+                    rstatus = 0
+                    resp.Setup = NT_TRANSACT_IOCTL
+                    mac_uuid = uuid1(node=0xf64d9446bbb0).bytes
+                    resp.Data = mac_uuid 
+                    resp.Data += uuid3(NAMESPACE_OID, share_name).bytes
+                    resp.Data += mac_uuid 
+                    resp.Data += 16*b"\x00" 
+            r = resp
         else:
             smblog.error('Not supported SMB Command: %s.' % reqHeader.Command)
             p.show()
@@ -1646,6 +1716,14 @@ class smbd(connection):
                 transfersyntax_uuid = UUID(bytes_le=tmp.TransferSyntax)
                 ctxitem.TransferSyntax = tmp.TransferSyntax #[:16]
                 ctxitem.TransferSyntaxVersion = tmp.TransferSyntaxVersion
+                # possibly eternalblue arch64 check
+                #if str(transfersyntax_uuid) == '71710533-beba-4937-8319-b5dbef9ccc36':
+                #    print("eternalblue check")
+                #    outbuf.AssocGroup = 0x00001b5e
+                #    outbuf.SecondAddr = 135 
+                #    ctxitem.AckResult = 0
+                #    ctxitem.AckReason = 0
+
                 if str(transfersyntax_uuid) == '8a885d04-1ceb-11c9-9fe8-08002b104860':
                     if service_uuid.hex in registered_services:
                         service = registered_services[service_uuid.hex]
@@ -1692,24 +1770,29 @@ class smbd(connection):
         return outbuf
 
     def handle_timeout_idle(self):
-        if len(conCache) >= conCacheLimit:
-            conCache.popitem(last=False)
-        conCache[self.remote.host] = self.sharesTable
-        global activeConCount
-        activeConCount -= 1
+        self.smb_disc()
         return False
 
     def handle_disconnect(self):
+        self.smb_disc()
+        return 0
+
+
+    def smb_disc(self):
         for i in self.fileOpenTable:
             if self.fileOpenTable[i] is not None:
                 if self.fileOpenTable[i]["Handle"] != -1:
                     self.fileOpenTable[i]["Handle"].close()
         if len(conCache) >= conCacheLimit:
             conCache.popitem(last=False)
-        conCache[self.remote.host] = self.sharesTable
+        self.rwDetection.handle_disc()
+        conCache[self.remote.host] = {}
+        conCache[self.remote.host]["Shares"] = self.sharesTable
+        conCache[self.remote.host]["Detection"] = self.rwDetection
+        conCache[self.remote.host]["DiscTime"] = datetime.datetime.now()
         global activeConCount
         activeConCount -= 1
-        return 0
+
 
 class epmapper(smbd):
     def __init__ (self):

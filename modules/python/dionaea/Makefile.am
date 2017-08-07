@@ -34,6 +34,7 @@ PYSCRIPTS += smb/include/asn1/mib.py
 PYSCRIPTS += smb/include/ntlmfields.py
 PYSCRIPTS += smb/include/gssapifields.py
 PYSCRIPTS += smb/include/nt_errors.py
+PYSCRIPTS += smb/ransomware.py
 PYSCRIPTS += smb/__init__.py
 PYSCRIPTS += smb/extras.py
 PYSCRIPTS += smb/smb.py

@@ -403,6 +403,7 @@ SMB_QUERY_FILE_ALT_NAME_INFO      = 0x0108
 SMB_QUERY_FILE_STREAM_INFO        = 0x0109
 SMB_QUERY_FILE_COMPRESSION_INFO   = 0x010b
 SMB_QUERY_FILE_INTERNAL_INFO      = 1006
+SMB_QUERY_FILE_NETWORK_OPEN_INFO  = 1034
 
 SMB_QueryInfoLvl = {
     SMB_INFO_STANDARD                 : 0x0001,
@@ -418,7 +419,8 @@ SMB_QueryInfoLvl = {
     SMB_QUERY_FILE_ALT_NAME_INFO      : 0x0108,
     SMB_QUERY_FILE_STREAM_INFO        : 0x0109,
     SMB_QUERY_FILE_COMPRESSION_INFO   : 0x010b,
-    SMB_QUERY_FILE_INTERNAL_INFO      : 0x1006
+    SMB_QUERY_FILE_INTERNAL_INFO      : 1006,
+    SMB_QUERY_FILE_NETWORK_OPEN_INFO  : 1034,
 }
 
 # Trans2 QUERY_FS infomation level codes MS-CIFS p.65
@@ -428,6 +430,7 @@ SMB_QUERY_FS_VOLUME_INFO            = 0x0102
 SMB_QUERY_FS_SIZE_INFO              = 0x0103
 SMB_QUERY_FS_DEVICE_INFO            = 0x0104
 SMB_QUERY_FS_ATTRIBUTE_INFO         = 0x0105
+SMB_QUERY_FS_OBJECT_ID_INFO         = 0x03f0
 
 SMB_QueryFSInfoLvl = { 
     SMB_INFO_ALLOCATION         : "SMB_INFO_ALLOCATION",               
@@ -435,7 +438,8 @@ SMB_QueryFSInfoLvl = {
     SMB_QUERY_FS_VOLUME_INFO    : "SMB_QUERY_FS_VOLUME_INFO",
     SMB_QUERY_FS_SIZE_INFO      : "SMB_QUERY_FS_SIZE_INFO",
     SMB_QUERY_FS_DEVICE_INFO    : "SMB_QUERY_FS_DEVICE_INFO",
-    SMB_QUERY_FS_ATTRIBUTE_INFO : "SMB_QUERY_FS_ATTRIBUTE_INFO"
+    SMB_QUERY_FS_ATTRIBUTE_INFO : "SMB_QUERY_FS_ATTRIBUTE_INFO",
+    SMB_QUERY_FS_OBJECT_ID_INFO : "SMB_QUERY_FS_OBJECT_ID_INFO",
 }
 
 # TRANS2 FIND Information Level Codes MS-CIFS p.64
@@ -1534,9 +1538,8 @@ class SMB_Trans_Request(Packet):
         FieldListField(
             "Setup", 0, ShortField("", 0), count_from = lambda pkt: pkt.SetupCount),
         LEShortField("ByteCount",0),
-        ConditionalField(StrFixedLenField(
-            "Padding", b'\0', 1), lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
-        SMBNullField("TransactionName",b"\\PIPE\\",
+        ConditionalField(ByteField("Padding", b'\0'), lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+        SMBNullField("TransactionName", None , #b"\\PIPE\\",
                      utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
         StrFixedLenField("Pad", b"", length_from=lambda x:x.lengthfrom_Pad()),
         FieldListField(
@@ -1554,9 +1557,8 @@ class SMB_Trans_Request(Packet):
         r += 4                        # 1 int
         r += self.SetupCount*2            # SetupCount words
         if hasattr(self, 'Padding') and self.Padding != None:
-            r += len(self.Padding)        # optional Padding
-        r += len(self.TransactionName)    # TransactionName
-#        print("r %i usize %i txn %i" % ( r, self.underlayer.size(), len(self.TransactionName)))
+            r += 1 #len(self.Padding)        # optional Padding
+        r += len(self.TransactionName)*2+2    # TransactionName
         r = self.ParamOffset - r
         return r
 
@@ -1569,8 +1571,8 @@ class SMB_Trans_Request(Packet):
         r += 4                        # 1 int
         r += self.SetupCount*2            # SetupCount words
         if hasattr(self, 'Padding') and self.Padding != None:
-            r += len(self.Padding)        # optional Padding
-        r += len(self.TransactionName)    # TransactionName
+            r += 1 #len(self.Padding)        # optional Padding
+        r += len(self.TransactionName)*2+2    # TransactionName
         r += len(self.Pad)                # Param Padding
         r += self.ParamCount            # Param
         r = self.DataOffset - r
@@ -1853,6 +1855,20 @@ class SMB_STRUCT_QUERY_FILE_BASIC_INFO(Packet):
         FlagsField("ExtFileAttributes", 0, -32, SMB_ExtFileAttributes),
         LEIntField("Reserved", 0),
     ]
+
+class SMB_STRUCT_QUERY_FILE_NETWORK_OPEN_INFO(Packet):
+    name = "SMB Query File Network Open Info"
+    fields_desc = [
+        NTTimeField("Created", 0),
+        NTTimeField("LastAccess", 0),
+        NTTimeField("LastWrite", 0),
+        NTTimeField("Change", 0),
+        LELongField("AllocationSize", 0),
+        LELongField("EndOfFile", 0),
+        FlagsField("ExtFileAttributes", 0, -32, SMB_ExtFileAttributes),
+        LEIntField("Reserved", 0),
+    ]
+
 
 class SMB_STRUCT_QUERY_FILE_EA_INFO(Packet):
     name = "SMB Query File EA Info"
@@ -2185,14 +2201,15 @@ class SMB_NT_Trans_Request(Packet):
         LEIntField("TotalDataCount",0),
         LEIntField("MaxParamCount",0),
         LEIntField("MaxDataCount",0),
-        FieldLenField("ParamCount", 0, fmt='<I', length_of="Param"),
-        #LEIntField("ParamCount", 0),
+        #FieldLenField("ParamCount", 0, fmt='<I', length_of="Param"),
+        LEIntField("ParamCount", 0),
         LEIntField("ParamOffset",0),
         LEIntField("DataCount",0),
         LEIntField("DataOffset",0),
-        FieldLenField("SetupCount", 0, fmt='B', count_of="Setup", adjust = lambda pkt,x:x/2),
+        FieldLenField("SetupCount", 0, fmt='B', length_of="Setup", adjust=lambda pkt,x:int(x/2)),
         LEShortField("Function",0),
-        FieldListField("Setup", None, XByteField("", None), count_from = lambda pkt:pkt.SetupCount*2), 
+        StrLenField("Setup", None, length_from=lambda pkt:pkt.SetupCount*2),
+        #FieldListField("Setup", None, LEShortField("", None), count_from = lambda pkt:pkt.SetupCount), 
         LEShortField("ByteCount", 0),
         # len pad1 = paramoffset - len SMB param - len(bytecount) - len(wordcount) - SMB header 
         StrLenField("Pad1", 0, length_from = lambda pkt:pkt.ParamOffset-pkt.WordCount*2-35),
@@ -2201,18 +2218,16 @@ class SMB_NT_Trans_Request(Packet):
         StrLenField("Data", b"", length_from=lambda pkt: pkt.DataCount),
     ]
 
-class SMB_NT_Trans_IOCTL_Request(Packet):
-    name = "SMB NT Trans IOCTL Request"
+class SMB_NT_Trans_IOCTL_Request_Setup(Packet):
+    name = "SMB NT Trans IOCTL Request Setup"
+    smb_cmd = SMB_COM_NT_TRANSACT
     fields_desc = [
-            ]
-
-class SMB_NT_Trans_Response(Packet):
-    name = "SMB NT Trans Response"
-    smb_cmd = SMB_COM_NT_TRANSACT #0xa0
-    fields_desc = [
-        ByteField("WordCount",0),
-        LEShortField("ByteCount",0),
+        LEIntField("FunctionCode", 0),
+        LEShortField("FID", 0),
+        ByteField("IsFsctl", 0),
+        ByteField("IsFlags", 0),
     ]
+
 
 class SMB_NT_Trans_Final_Response(Packet):
     name = "SMB NT Trans Final Response"
@@ -2228,13 +2243,13 @@ class SMB_NT_Trans_Final_Response(Packet):
         FieldLenField("DataCount", None, fmt="<I", length_of="Data"), 
         FieldLenField("DataOffset", None, fmt="<I", length_of="Setup", adjust=lambda pkt,x:pkt.calcDataOffset(x)),
         LEIntField("DataDisplacement",0),
-        FieldLenField("SetupCount", None, fmt="<B", count_of="Setup"), 
+        FieldLenField("SetupCount", None, fmt="<B", length_of="Setup", adjust=lambda pkt,x:int(x/2)), 
         FieldListField("Setup", None, LEShortField("", None)),# count_from = lambda pkt: pkt.setup()),
         MultiFieldLenField("ByteCount", None, fmt='<H', length_of=("Pad1","Param","Pad2","Data")),
-        StrLenField("Pad1", None, length_from=lambda x:x.lengthfrom_Pad1()),
-        PacketLenField("Param", None, Packet),
-        StrLenField("Pad2", None, length_from=lambda x:x.lengthfrom_Pad2()),
-        StrLenField("Data", None),
+        StrFixedLenField("Pad1", None, length_from=lambda x:x.lengthfrom_Pad1()),
+        PacketLenField("Param", Packet(), Packet),
+        StrFixedLenField("Pad2", None, length_from=lambda x:x.lengthfrom_Pad2()),
+        StrLenField("Data", ""),
     ]
 
 
@@ -2256,17 +2271,10 @@ class SMB_NT_Trans_Final_Response(Packet):
         pad = (4 - (1 + 2*len(self.Setup) + 2) % 4) % 4
         return pad
 
-    # trans2 paramoffset already aligned,thus pad only depends on paramcount
+    # paramoffset already aligned,thus pad only depends on paramcount
     def lengthfrom_Pad2(self):
         pad = (4 - len(self.Param) % 4) % 4
         return pad
-
-class SMB_NT_Trans_IOCTL_Response_Param(Packet):
-    name = "SMB NT Trans IOCTL Response Param"
-    fields_desc = [
-
-            ]
-
 
 
 # [MS-CIFS].pdf - 2.2.5 Transaction Subcommands
@@ -2502,7 +2510,7 @@ class DCERPC_Bind_Ack(Packet):
         LEShortField("MaxTransmitFrag",4280),
         LEShortField("MaxReceiveFrag",4280),
         XLEIntField("AssocGroup",0x4ef7),
-        FieldLenField("SecondAddrLen", 14, fmt='<H', length_of="SecondAddr"),
+        FieldLenField("SecondAddrLen", None, fmt='<H', length_of="SecondAddr"),
         StrLenField(
             "SecondAddr", "\\PIPE\\browser\0", length_from=lambda x:x.SecondAddrLen),
         #        ByteField("NumCtxItems",1),
@@ -2554,6 +2562,15 @@ class WKSTA_INFO_100(Packet):
         LEIntField("ReturnCode", 0)
     ]
 
+
+class FILE_OBJECTID_BUFFER_1(Packet):
+    name = "File Object ID Buffer 1"
+    fields_desc = [
+        UUIDField("ObjectId", b"\x00"),
+        UUIDField("BirthVolumeId", b"\x00"),
+        UUIDField("BirthObjectId", b"\x00"),
+        UUIDField("DomainId", b"\x00"),
+    ]
 
 
 

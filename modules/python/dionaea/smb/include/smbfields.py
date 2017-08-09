@@ -1399,8 +1399,8 @@ class SMB_Write_AndX_Request(Packet):
         LEShortField("ByteCount",  0),
         ConditionalField(LEShortField("PipeWriteLen", 0), lambda x:
                          x.WriteMode & SMB_WM_MSGSTART and x.WriteMode & SMB_WM_WRITERAW),
-        #StrLenField("Padding", None, length_from=lambda x: x.ByteCount-((x.DataLenHigh<<16)|x.DataLenLow)),
-        ByteField("Pad", 0),
+        StrLenField("Padding", None, length_from=lambda x: x.ByteCount-((x.DataLenHigh<<16)|x.DataLenLow)),
+        #ByteField("Pad", 0),
         StrLenField("Data", b"", length_from=lambda x:(
             (x.DataLenHigh<<16)|x.DataLenLow)),
     ]

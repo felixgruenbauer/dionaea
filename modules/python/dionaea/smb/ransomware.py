@@ -78,6 +78,7 @@ class RansomwareDetection():
         if op == FILE_OP_RENAME:
             if file_name in self.ops[share]:
                 self.ops[share][new_file_name] = self.ops[share].pop(file_name)
+                file_name = new_file_name
 
 
         #if op == FILE_OP_CLOSE and (FILE_OP_WRITE in self.ops[share][file_name]["ops"] or FILE_OP_OVERWRITE in self.ops[share][file_name]["ops"]):
@@ -293,10 +294,6 @@ class EncryptionIndic(AbstractIndicator):
     def required_ops(self):
         return [FILE_OP_DELETE, FILE_OP_CLOSE]
 
-    def chi_square(self, file_content):
-        count = np.bincount()
-        return scipy.stats.chisquare(np.bincount(file_content)).statistic
-
     def mc_pi(self, data):
         #monte = np.fromstring(locked_file, dtype=np.ubyte)
         #locked_file = locked_file[:len(locked_file) // 8 * 8]
@@ -327,6 +324,8 @@ class EncryptionIndic(AbstractIndicator):
 
         file_content = share_ops[file_name]["modified"]
         file_content = np.fromstring(file_content, dtype=np.ubyte)
+        if not len(file_content) // 6 * 6:
+            return 0
         chi = scipy.stats.chisquare(np.bincount(file_content)).statistic
         mcpi = self.mc_pi(file_content)
         mcpi = 100 * (math.fabs(math.pi - mcpi)/math.pi)

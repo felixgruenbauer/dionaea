@@ -49,6 +49,9 @@ from .include.asn1.ber import BER_Exception
 from dionaea.util import calculate_doublepulsar_opcode, xor
 from collections import OrderedDict
 from .ransomware import * 
+from cachetools import TTLCache
+from difflib import diff_bytes, unified_diff
+import zipfile
 
 smblog = logging.getLogger('SMB')
 
@@ -63,10 +66,38 @@ registered_services = {}
 
 fsLimit = 60000000
 activeConLimit = 5
-conCacheLimit = 5
-
-conCache = OrderedDict() 
 activeConCount = 0
+conCache = TTLCache(5, 1200) 
+
+def get_def_shares():
+    default_shares = {
+        "MYSHARE": {
+            "Name": "MYSHARE",
+            "Comment": "tesasdfads",
+            "Path": "/home/felix/testshare",
+            "Service": SMB_SERVICE_DISK_SHARE,
+            "Type": 0x00000000,
+            "FS": fs.memoryfs.MemoryFS(), 
+            "NativeFS": "NTFS",
+        },
+        "IPC$": {
+            "Name": "IPC$",
+            "Comment": "IPC",
+            "Path": "/",
+            "Service": SMB_SERVICE_NAMED_PIPE,
+            "Type": 0x00000003, 
+            "FS": fs.memoryfs.MemoryFS(),
+            "NativeFS": ""
+        }
+    }
+    memFS = default_shares["MYSHARE"]["FS"]
+    memFS.makedirs("/Users/pete")
+    memFS.makedirs("/pictures/vacation")
+    memFS.setbytes("/Users/pete/attachement.txt", b"test")
+    memFS.setbytes("/Users/pete/password.txt", b"pete"*16)
+    memFS.setbytes("/Hello.txt", b"pete"*16)
+    return default_shares
+
 
 def register_rpc_service(service):
     uuid = service.uuid
@@ -100,41 +131,15 @@ class smbd(connection):
         self.buffer = b""
 
 
-        
-
         if self.remote.host in conCache:
             conData = conCache.pop(self.remote.host)
             self.sharesTable = conData["Shares"]
             self.rwDetection = conData["Detection"]
         else:
-            self.sharesTable = {
-                "MYSHARE": {
-                    "Name": "MYSHARE",
-                    "Comment": "tesasdfads",
-                    "Path": "/home/felix/testshare",
-                    "Service": SMB_SERVICE_DISK_SHARE,
-                    "Type": 0x00000000,
-                    "FS": fs.memoryfs.MemoryFS(), 
-                    "NativeFS": "NTFS",
-                },
-                "IPC$": {
-                    "Name": "IPC$",
-                    "Comment": "IPC",
-                    "Path": "/",
-                    "Service": SMB_SERVICE_NAMED_PIPE,
-                    "Type": 0x00000003, 
-                    "FS": fs.memoryfs.MemoryFS(),
-                    "NativeFS": ""
-                }
-            }
-            memFS = self.sharesTable["MYSHARE"]["FS"]
-            memFS.makedirs("/Users/pete")
-            memFS.makedirs("/pictures/vacation")
-            memFS.setbytes("/Users/pete/attachement.txt", b"test")
-            memFS.setbytes("/Users/pete/password.txt", b"pete"*16)
-            memFS.setbytes("/Hello.txt", b"pete"*16)
+            self.sharesTable = get_def_shares()
             self.rwDetection = RansomwareDetection(self.sharesTable)
- 
+        
+        
 
         self.fsSize = 0
         for share in self.sharesTable:
@@ -732,13 +737,15 @@ class smbd(connection):
 #            fileName = f.i2repr(reqParam,v)
             fileName = reqParam.FileName
             fileName = fileName.replace("\\", "/")
+            fid = 0x4000 
+            while fid in self.fileOpenTable.keys():
+                fid += 1
  
             if self.treeConTable[reqHeader.TID]["Share"]["Service"] == SMB_SERVICE_NAMED_PIPE:
                 resp.CreateAction = SMB_CREATDISP_FILE_OPEN
                 resp.FileType = SMB_RES_MSG_MODE_PIPE 
         # nonblocking,consumer end,msg pipe, read msg from pipe, ICount=255
                 resp.IPCstate = 0x05ff 
-                fid = 0x4000 + len(self.fileOpenTable.keys()) 
                 resp.FID = fid
                 resp.IsDirectory = 0
                 self.fileOpenTable[fid] = {
@@ -841,7 +848,6 @@ class smbd(connection):
 
                 # compile response
                 if rstatus == STATUS_SUCCESS:
-                    fid = 0x4000 + len(self.fileOpenTable.keys()) 
                     resp.FID = fid
                     resp.IsDirectory = memFS.isdir(fileName)
                     resp.CreateAction = createAction
@@ -992,11 +998,6 @@ class smbd(connection):
                                 outpacket.show()
                                 self.outbuf = outpacket.build()
                             self.buf = b''
-            i = incident("dionaea.modules.python.smb.writex")
-            i.con = self
-            i.path = self.fileOpenTable[reqParam.FID]["FileName"] 
-            i.status = rstatus
-            i.report()
         elif Command == SMB_COM_WRITE:
             h = p.getlayer(SMB_Write_Request)
             if h.FID in self.fileOpenTable and self.fileOpenTable[h.FID] is not None:
@@ -1008,6 +1009,7 @@ class smbd(connection):
             reqParam = p.getlayer(SMB_Read_AndX_Request)
 
             if not reqParam.FID in self.fileOpenTable:
+                r = SMB_Error_Response()
                 rstatus = STATUS_INVALID_HANDLE
             elif self.fileOpenTable[reqHeader.FID]["Type"] == SMB_RES_DISK:
                 share = self.treeConTable[reqHeader.TID]["Share"]["Name"]
@@ -1062,11 +1064,6 @@ class smbd(connection):
     
                 self.state['readcount'] = newreadcount
 
-            i = incident("dionaea.modules.python.smb.readx")
-            i.con = self
-            i.path = self.fileOpenTable[reqParam.FID]["FileName"] 
-            i.status = rstatus
-            i.report()
         elif Command == SMB_COM_RENAME:
             reqParam = p.getlayer(SMB_Rename_Request)
             resp = SMB_Error_Response()
@@ -1387,22 +1384,31 @@ class smbd(connection):
                         info.FileName = fileName.split("/")[-1]
                     elif infoLvl == SMB_QUERY_FILE_BASIC_INFO or infoLvl == 1004:
                         info = SMB_STRUCT_QUERY_FILE_BASIC_INFO()
-                        details = memFS.getinfo(fileName, namespaces=["details"])
-                        info.Created = details.created
-                        info.LastAccess = details.accessed
-                        info.LastWrite = details.modified
-                        info.Change = details.modified
-                        if memFS.isdir(fileName):
-                            info.ExtFileAttributes = SMB_EXT_ATTR_DIRECTORY
-                        else:
-                            info.ExtFileAttributes = SMB_EXT_ATTR_ARCHIVE
+                        if self.treeConTable[reqHeader.TID]["Share"]["Service"] == SMB_SERVICE_DISK_SHARE:
+                            details = memFS.getinfo(fileName, namespaces=["details"])
+                            info.Created = details.created
+                            info.LastAccess = details.accessed
+                            info.LastWrite = details.modified
+                            info.Change = details.modified
+                            if memFS.isdir(fileName):
+                                info.ExtFileAttributes = SMB_EXT_ATTR_DIRECTORY
+                            else:
+                                info.ExtFileAttributes = SMB_EXT_ATTR_ARCHIVE
                     elif infoLvl == SMB_QUERY_FILE_STANDARD_INFO or infoLvl == 1005:
                         info = SMB_STRUCT_QUERY_FILE_STANDARD_INFO()
-                        info.AllocationSize = memFS.getsize(fileName) if isFile else 4096
-                        info.EndOfFile = memFS.getsize(fileName) if isFile else 0
-                        info.NumberOfLinks = 1
-                        info.DeletePending = 0
-                        info.Directory = memFS.isdir(fileName) if isFile else 0
+                        if self.treeConTable[reqHeader.TID]["Share"]["Service"] == SMB_SERVICE_DISK_SHARE:
+                            info.AllocationSize = memFS.getsize(fileName) if isFile else 4096
+                            info.EndOfFile = memFS.getsize(fileName) if isFile else 0
+                            info.NumberOfLinks = 1
+                            info.DeletePending = 0
+                            info.Directory = memFS.isdir(fileName) if isFile else 0
+                        else:
+                            info.AllocationSize = 4096
+                            info.EndOfFile = 0
+                            info.NumberOfLinks = 1
+                            info.DeletePending = 0
+                            info.Directory = 0
+
                     elif infoLvl == SMB_QUERY_FILE_EA_INFO or infoLvl == 1007:
                         info = SMB_STRUCT_QUERY_FILE_EA_INFO()
                         info.EaSize = 0
@@ -1651,13 +1657,20 @@ class smbd(connection):
                 file_name = self.fileOpenTable[setup.FID]["FileName"]
                 share_name = self.treeConTable[reqHeader.TID]["Share"]["Name"]
                 if setup.FunctionCode == 0x900C0:
-                    rstatus = 0
-                    resp.Setup = NT_TRANSACT_IOCTL
+                    file_name = file_name.split("/")[-1]
                     mac_uuid = uuid1(node=0xf64d9446bbb0).bytes
-                    resp.Data = mac_uuid 
-                    resp.Data += uuid3(NAMESPACE_OID, share_name).bytes
-                    resp.Data += mac_uuid 
-                    resp.Data += 16*b"\x00" 
+                    info = FILE_OBJECTID_BUFFER_1()
+                    #info.ObjectId = mac_uuid 
+                    #info.BirthObjectId = mac_uuid 
+                    #info.BirthVolumeId = uuid3(NAMESPACE_OID, self.treeConTable[reqHeader.TID]["Share"]["Name"]).bytes
+                    resp.Data = info.build()
+
+                    rstatus = STATUS_INVALID_DEVICE_REQUEST 
+                    resp.Setup = NT_TRANSACT_IOCTL
+                    #resp.Data = mac_uuid 
+                    #resp.Data += uuid3(NAMESPACE_OID, share_name).bytes
+                    #resp.Data += mac_uuid 
+                    #resp.Data += 16*b"\x00" 
             r = resp
         else:
             smblog.error('Not supported SMB Command: %s.' % reqHeader.Command)
@@ -1716,7 +1729,7 @@ class smbd(connection):
                 transfersyntax_uuid = UUID(bytes_le=tmp.TransferSyntax)
                 ctxitem.TransferSyntax = tmp.TransferSyntax #[:16]
                 ctxitem.TransferSyntaxVersion = tmp.TransferSyntaxVersion
-                # possibly eternalblue arch64 check
+                # possibly msf eternalblue arch64 check
                 #if str(transfersyntax_uuid) == '71710533-beba-4937-8319-b5dbef9ccc36':
                 #    print("eternalblue check")
                 #    outbuf.AssocGroup = 0x00001b5e
@@ -1783,15 +1796,50 @@ class smbd(connection):
             if self.fileOpenTable[i] is not None:
                 if self.fileOpenTable[i]["Handle"] != -1:
                     self.fileOpenTable[i]["Handle"].close()
-        if len(conCache) >= conCacheLimit:
-            conCache.popitem(last=False)
         self.rwDetection.handle_disc()
+        self.save_fs_diff()
         conCache[self.remote.host] = {}
         conCache[self.remote.host]["Shares"] = self.sharesTable
         conCache[self.remote.host]["Detection"] = self.rwDetection
         conCache[self.remote.host]["DiscTime"] = datetime.datetime.now()
         global activeConCount
         activeConCount -= 1
+
+    def save_fs_diff(self):
+        dionaea_config = g_dionaea.config().get("dionaea")
+        download_dir = dionaea_config.get("download.dir")
+        diff_zip_name = fs.path.join(download_dir, "fs_diff-" + self.remote.host + ".zip")
+        diff_zip = zipfile.ZipFile(diff_zip_name, "w")
+        default_shares = get_def_shares()
+        #diff = {}
+        for share in self.sharesTable:
+            #diff[share] = {}
+            memfs = self.sharesTable[share]["FS"]
+            def_memfs = default_shares[share]["FS"]
+            for path, dirs, files in memfs.walk():
+                for f in files:
+                    file_name = fs.path.join(path, f.name)
+                    if def_memfs.isfile(file_name):
+                        #diff_gen = diff_bytes(unified_diff, memfs.getbytes(file_name), def_memfs.getbytes(file_name)) 
+                        #diff[share][file_name] = b"".join(diff_gen)
+                        if memfs.getbytes(file_name) == def_memfs.getbytes(file_name): 
+                            continue
+                    #diff[share][file_name] = memfs.getbytes(file_name) 
+                    name = fs.path.join(share, file_name.strip("/"))
+                    diff_zip.writestr(name, memfs.getbytes(file_name))
+
+        diff_zip.close()
+
+
+    def base_files(self, shares):
+        base_files = {} 
+        for share in shares:
+            base_files[share] = {}
+            for path, dirs, files in shares[share]["FS"].walk():
+                for f in files:
+                    base_files.append(fs.path.join(path, f.name)) 
+        return base_files
+            
 
 
 class epmapper(smbd):

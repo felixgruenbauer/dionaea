@@ -3171,7 +3171,7 @@ class SRVSVC(RPCService):
                 for i in self.Data:
                     data = self.Data[i]
                     self.__packer.pack_pointer(self.Netname_pointer) # netname
-                    self.__packer.pack_long(data['Type']) # type
+                    self.__packer.pack_long(data['type']) # type
                     self.__packer.pack_pointer(self.Remark_pointer) # remark
 
                 for j in self.Data:
@@ -3179,7 +3179,7 @@ class SRVSVC(RPCService):
                     self.__packer.pack_string_fix(
                         str(j+'\0').encode('utf16')[2:])
                     self.__packer.pack_string_fix(
-                        str(data['Comment']+'\0').encode('utf16')[2:])
+                        str(data['comment']+'\0').encode('utf16')[2:])
 
     class SHARE_INFO_502(object):
         # 2.2.4.26 SHARE_INFO_502_I
@@ -3228,7 +3228,7 @@ class SRVSVC(RPCService):
                 for i in self.Data:
                     data = self.Data[i]
                     self.__packer.pack_pointer(self.Netname_pointer) # netname
-                    self.__packer.pack_long(data['Type']) # STYPE_DISKTREE
+                    self.__packer.pack_long(data['type']) # STYPE_DISKTREE
                     self.__packer.pack_pointer(self.Remark_pointer) # remark
                     self.__packer.pack_long(self.Permissions)		# permissions
                     self.__packer.pack_long(self.Max_uses) # max_uses
@@ -3244,9 +3244,9 @@ class SRVSVC(RPCService):
                     self.__packer.pack_string_fix(
                         str(j+'\0').encode('utf16')[2:])
                     self.__packer.pack_string_fix(
-                        str(data['Path']+'\0').encode('utf16')[2:])
+                        str(data['path']+'\0').encode('utf16')[2:])
                     self.__packer.pack_string_fix(
-                        str(data['Comment']+'\0').encode('utf16')[2:])
+                        str(data['comment']+'\0').encode('utf16')[2:])
 
     class SHARE_INFO_2(object):
         #2.2.4.24 SHARE_INFO_2

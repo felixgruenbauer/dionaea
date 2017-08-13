@@ -1683,6 +1683,50 @@ class SMB_STRUCT_FIND_FILE_BOTH_DIRECTORY_INFO(Packet):
         SMBLenField("FileName", None, length_from=lambda x:x.FileNameLength),
     ]
 
+class SMB_STRUCT_FIND_FILE_FULL_DIRECTORY_INFO(Packet):
+    name = "SMB Find File Full Directory Info"
+    fields_desc = [
+        FieldLenField("NextEntryOffset", None, fmt="<I", length_of="FileName", adjust=lambda pkt, x:x+68 if pkt.payload else 0),
+        LEIntField("FileIndex", 0),
+        NTTimeField("Created", 0),
+        NTTimeField("LastAccess", 0),
+        NTTimeField("LastWrite", 0),
+        NTTimeField("Change", 0),
+        LELongField("EndOfFile", 0),
+        LELongField("AllocationSize", 0),
+        FlagsField("ExtFileAttributes", SMB_EXT_ATTR_ARCHIVE, -32, SMB_ExtFileAttributes),
+        FieldLenField("FileNameLength", None, fmt="<I", length_of="FileName"),
+        LEIntField("EaSize", 0),
+        SMBLenField("FileName", None, length_from=lambda x:x.FileNameLength),
+    ]
+
+class SMB_STRUCT_FIND_FILE_NAMES_INFO(Packet):
+    name = "SMB Find File Names Info"
+    fields_desc = [
+        FieldLenField("NextEntryOffset", None, fmt="<I", length_of="FileName", adjust=lambda pkt, x:x+12 if pkt.payload else 0),
+        LEIntField("FileIndex", 0),
+        FieldLenField("FileNameLength", None, fmt="<I", length_of="FileName"),
+        SMBLenField("FileName", None, length_from=lambda x:x.FileNameLength),
+    ]
+
+class SMB_STRUCT_FIND_FILE_DIRECTORY_INFO(Packet):
+    name = "SMB Find File Directory Info"
+    fields_desc = [
+        FieldLenField("NextEntryOffset", None, fmt="<I", length_of="FileName", adjust=lambda pkt, x:x+64 if pkt.payload else 0),
+        LEIntField("FileIndex", 0),
+        NTTimeField("Created", 0),
+        NTTimeField("LastAccess", 0),
+        NTTimeField("LastWrite", 0),
+        NTTimeField("Change", 0),
+        LELongField("EndOfFile", 0),
+        LELongField("AllocationSize", 0),
+        FlagsField("ExtFileAttributes", SMB_EXT_ATTR_ARCHIVE, -32, SMB_ExtFileAttributes),
+        FieldLenField("FileNameLength", None, fmt="<I", length_of="FileName"),
+        SMBLenField("FileName", None, length_from=lambda x:x.FileNameLength),
+    ]
+
+
+
 ##
 ##   Trans2 SET FILE/PATH Information Level Codes and data structures
 ##  
@@ -2107,7 +2151,7 @@ class SMB_Trans2_Final_Response(Packet):
         FieldLenField("WordCount", None, fmt="B", count_of="Setup", adjust=lambda pkt,x:x+10), 
         FieldLenField("TotalParamCount", None, fmt='<H', length_of="Param"),
         #FieldLenField("TotalDataCount", None, fmt="<H", length_of="Data", adjust=lambda pkt,x:x+len(pkt.payload)),
-        LenField("DataCount", fmt="<H"),
+        LenField("TotalDataCount", fmt="<H"),
         LEShortField("Reserved1",0),
         FieldLenField("ParamCount", None, fmt='<H', length_of="Param"),
         FieldLenField("ParamOffset", None, fmt='<H', count_of="Setup", adjust=lambda pkt,x:pkt.calcParamOffset(x)),

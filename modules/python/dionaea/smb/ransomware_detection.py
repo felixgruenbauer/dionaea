@@ -68,12 +68,12 @@ class RansomwareDetection():
         print(File_Ops[op], file_name, new_file_name, timestamp)
         # save orig file
         if op in [FILE_OP_DELETE, FILE_OP_TRUNC, FILE_OP_OPEN]:
-            self.ops[share][file_name]["orig"] = self.shares[share]["FS"].getbytes(file_name)
+            self.ops[share][file_name]["orig"] = self.shares[share]["memfs"].getbytes(file_name)
 
 
         # save modified file
         if op == FILE_OP_CLOSE and (FILE_OP_WRITE in self.ops[share][file_name]["ops"] or FILE_OP_OVERWRITE in self.ops[share][file_name]["ops"]):
-            self.ops[share][file_name]["modified"] = self.shares[share]["FS"].getbytes(file_name)
+            self.ops[share][file_name]["modified"] = self.shares[share]["memfs"].getbytes(file_name)
 
         if op == FILE_OP_RENAME:
             if file_name in self.ops[share]:

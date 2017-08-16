@@ -1,8 +1,12 @@
 from . import rpcservices
-from .smb import smblog
+#from .smb import smblog
 import fs.memoryfs
 import os
 from .include.smbfields import SMB_SERVICE_DISK_SHARE,SMB_SERVICE_NAMED_PIPE,SMB_SERVICE_PRINT_SHARE
+import logging 
+
+smblog = logging.getLogger('SMB')
+
 
 class SmbConfig(object):
     """
@@ -108,8 +112,12 @@ class SmbConfig(object):
             }
 
 
+        self.time_margin = config.get("time_margin", 10)
+        self.entropy_threshold = config.get("entropy_threshold", 0.3)
+        self.score_threshold = config.get("score_threshold", 200)
+
+
     def load_local_dir(self, path):
-        dirs_dict = {}
         memfs = fs.memoryfs.MemoryFS()
         os.chdir(path)
         for root, dirs, files in os.walk("."):

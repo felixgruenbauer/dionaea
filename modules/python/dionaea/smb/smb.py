@@ -52,6 +52,7 @@ from . import ransomware_detection as rwd
 from cachetools import TTLCache
 import zipfile
 import copy
+from .extras import SmbConfig
 
 smblog = logging.getLogger('SMB')
 
@@ -79,7 +80,6 @@ class smbd(connection):
 
 
     def __init__ (self, proto="tcp", config=None):
-        print("init config:", config)
         connection.__init__(self,"tcp")
         self.state = {
             'lastcmd': None,
@@ -107,7 +107,7 @@ class smbd(connection):
                 self.rwd = conData["Detection"]
             else:
                 self.sharesTable = copy.deepcopy(smbd.config.shares)
-                self.rwd = rwd.RansomwareDetection(self.sharesTable)
+                self.rwd = rwd.RansomwareDetection(self.sharesTable, smbd.config, self.remote.host)
 
 
             self.TotalAllocationUnits = smbd.config.memfs_limit//(self.BytesPerSector*self.SectorsPerAllocationUnit)
@@ -129,9 +129,8 @@ class smbd(connection):
       
         
     def apply_config(self, config=None):
-        print("apply config:", config)
         # Avoid import loops
-        from .extras import SmbConfig
+        #from .extras import SmbConfig
         smbd.config = SmbConfig(config=config)
 
 
@@ -909,7 +908,7 @@ class smbd(connection):
             memFS = self.treeConTable[reqHeader.TID]["Share"]["memfs"]
             if reqParam.FID in self.fileOpenTable and self.fileOpenTable[reqParam.FID] is not None:
                 if self.fileOpenTable[reqParam.FID]["Type"] == SMB_RES_DISK:
-                    smblog.warn("WRITE FILE! %s"% self.fileOpenTable[reqParam.FID]["FileName"])
+                    #smblog.warn("WRITE FILE! %s"% self.fileOpenTable[reqParam.FID]["FileName"])
                     if len(reqParam.Data) > reqParam.DataLenLow:
                         # return error
                         pass
@@ -1771,7 +1770,7 @@ class smbd(connection):
                 if self.fileOpenTable[i]["Handle"] != -1:
                     self.fileOpenTable[i]["Handle"].close()
         self.rwd.handle_disc()
-        #self.save_fs_diff()
+        self.save_fs_diff()
         conCache[self.remote.host] = {}
         conCache[self.remote.host]["Shares"] = self.sharesTable
         conCache[self.remote.host]["Detection"] = self.rwd
@@ -1781,14 +1780,14 @@ class smbd(connection):
     def save_fs_diff(self):
         dionaea_config = g_dionaea.config().get("dionaea")
         download_dir = dionaea_config.get("download.dir")
-        diff_zip_name = fs.path.join(download_dir, "fs_diff-" + self.remote.host + ".zip")
-        diff_zip = zipfile.ZipFile(diff_zip_name, "w")
-        default_shares = get_def_shares()
-        #diff = {}
+        date = datetime.datetime.now()
+        zip_name = fs.path.join(download_dir, "fs_diff-" + self.remote.host + "-" + date + ".zip")
+        diff_zip = zipfile.ZipFile(zip_name, "w")
         for share in self.sharesTable:
-            #diff[share] = {}
             memfs = self.sharesTable[share]["memfs"]
-            def_memfs = default_shares[share]["memfs"]
+            if not memfs:
+                continue
+            def_memfs = SmbConfig.get_share_fs[share]
             for path, dirs, files in memfs.walk():
                 for f in files:
                     file_name = fs.path.join(path, f.name)

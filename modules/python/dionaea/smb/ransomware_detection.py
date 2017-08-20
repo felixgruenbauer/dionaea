@@ -85,19 +85,16 @@ class RansomwareDetection():
 
 
 
-        score, files = self.access_pattern.check(file_name, op, timestamp, share_name)
+        score, file_pair = self.access_pattern.check(file_name, op, timestamp, share_name)
         self.malice_score += score 
-        if files:
-            rwdlog.info("malice score: %d(%d) %s %s"%(self.malice_score, score, "AccessPattern", files))
-            print("malice score: %d(%d) %s %s"%(self.malice_score, score, "AccessPattern", files))
+        if file_pair:
+            rwdlog.info("malice score: %d(%d) %s %s"%(self.malice_score, score, "AccessPattern", file_pair))
+            print("malice score: %d(%d) %s %s"%(self.malice_score, score, "AccessPattern", file_pair))
 
         for i in self.indicators:
-            if files:
-                score, result = i.check(file_name, op, timestamp, share_name, files) 
-            else:
-                score, result = i.check(file_name, op, timestamp, share_name) 
+            score, result = i.check(file_name, op, timestamp, share_name, files=file_pair) 
+            self.malice_score += score 
             if result and score:
-                self.malice_score += score 
                 rwdlog.info("malice_score: %d(%d) %s %s"%(self.malice_score, score, i.__class__.__name__, result))
                 print("malice_score: %d(%d) %s %s"%(self.malice_score, score, i.__class__.__name__, result))
 

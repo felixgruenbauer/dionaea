@@ -1780,7 +1780,7 @@ class smbd(connection):
     def save_fs_diff(self):
         dionaea_config = g_dionaea.config().get("dionaea")
         download_dir = dionaea_config.get("download.dir")
-        date = datetime.datetime.now()
+        date = datetime.datetime.now().isoformat()
         zip_name = fs.path.join(download_dir, "fs_diff-" + self.remote.host + "-" + date + ".zip")
         diff_zip = zipfile.ZipFile(zip_name, "w")
         for share in self.sharesTable:

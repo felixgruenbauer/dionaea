@@ -119,7 +119,12 @@ class SmbConfig(object):
 
     def load_local_dir(self, path):
         memfs = fs.memoryfs.MemoryFS()
-        os.chdir(path)
+        try:
+            os.chdir(path)
+        except FileNotFoundError:
+            smblog.error("local_path not found, using default MemoryFS instead")
+            return self.create_def_fs()
+
         for root, dirs, files in os.walk("."):
             memfs.makedirs(root, recreate=True)
             for f in files:

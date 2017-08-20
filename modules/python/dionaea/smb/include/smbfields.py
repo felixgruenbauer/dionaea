@@ -1985,7 +1985,32 @@ class SMB_Trans2_Request(Packet):
         #        FieldListField("Setup", 0, ShortField("", 0), count_from = lambda pkt: pkt.SetupCount),
         FieldListField("Setup", 0, LEShortEnumField(
             "",0,SMB_Trans2_Commands), count_from = lambda pkt: pkt.SetupCount),
+        LEShortField("ByteCount", 0),
+        ByteField("Name",0),
+        StrLenField("Pad1", "", length_from=lambda pkt:pkt.length_pad1()),
+        StrLenField("Param", "", length_from=lambda pkt:pkt.ParamCount),
+        StrLenField("Pad2", "", length_from=lambda pkt:pkt.length_pad2()),
+        StrLenField("Data", "", length_from=lambda pkt:pkt.DataCount),
     ]
+    def length_pad1(self):
+        if self.ParamOffset == 0:
+            return 0
+        pad = self.ParamOffset - self.WordCount*2 
+        pad -= 32 # SMB header
+        pad -= 2 # ByteCount in SMB Data
+        pad -= 1 # Name in SMB Data
+        pad -= 1 # len wordCount 
+        return pad
+
+    def length_pad2(self):
+       if self.DataOffset == 0:
+           return 0
+       pad = self.DataOffset
+       pad -= self.ParamOffset
+       pad -= self.ParamCount
+       return pad
+
+
 
 
 # TRANS2_QUERY_FILE_INFORMATION (0x0007)

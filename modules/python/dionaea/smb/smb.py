@@ -1787,7 +1787,7 @@ class smbd(connection):
             memfs = self.sharesTable[share]["memfs"]
             if not memfs:
                 continue
-            def_memfs = SmbConfig.get_share_fs[share]
+            def_memfs = smbd.config.get_share_fs(share)
             for path, dirs, files in memfs.walk():
                 for f in files:
                     file_name = fs.path.join(path, f.name)

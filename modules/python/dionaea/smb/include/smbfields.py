@@ -1985,12 +1985,6 @@ class SMB_Trans2_Request(Packet):
         #        FieldListField("Setup", 0, ShortField("", 0), count_from = lambda pkt: pkt.SetupCount),
         FieldListField("Setup", 0, LEShortEnumField(
             "",0,SMB_Trans2_Commands), count_from = lambda pkt: pkt.SetupCount),
-        LEShortField("ByteCount", 0),
-        ByteField("Name",0),
-        StrLenField("Pad1", "", length_from=lambda pkt:pkt.length_pad1()),
-        StrLenField("Param", "", length_from=lambda pkt:pkt.ParamCount),
-        StrLenField("Pad2", "", length_from=lambda pkt:pkt.length_pad2()),
-        StrLenField("Data", "", length_from=lambda pkt:pkt.DataCount),
     ]
     def length_pad1(self):
         if self.ParamOffset == 0:
@@ -2008,6 +2002,35 @@ class SMB_Trans2_Request(Packet):
        pad = self.DataOffset
        pad -= self.ParamOffset
        pad -= self.ParamCount
+       return pad
+
+
+
+class SMB_Trans2_SESSION_SETUP_Request(Packet):
+    name = "SMB Trans2 Session Setup Request"
+    fields_desc = [
+        MultiFieldLenField("ByteCount", None, fmt='<H', length_of=("Name","Pad", "Param", "Pad1", "Data")),
+        ByteField("Name", 0),
+        StrFixedLenField("Pad", b"", length_from=lambda x:x.lengthfrom_Pad()),
+        StrLenField("Param", "", length_from=lambda x:x.underlayer.ParamCount),
+        StrFixedLenField("Pad1", b"", length_from=lambda x:x.lengthfrom_Pad1()),
+        StrLenField("Data", "", length_from=lambda x:x.underlayer.DataCount),
+    ]
+    def lengthfrom_Pad(self):
+        if self.underlayer.ParamOffset == 0:
+            return 0
+        pad = self.underlayer.ParamOffset - self.underlayer.size() 
+        pad -= 32 # SMB header
+        pad -= 2 # ByteCount in SMB Data
+        pad -= 1 # Name in SMB Data
+        return pad
+
+    def lengthfrom_Pad1(self):
+       if self.underlayer.DataOffset == 0:
+           return 0
+       pad = self.underlayer.DataOffset
+       pad -= self.underlayer.ParamOffset
+       pad -= self.underlayer.ParamCount
        return pad
 
 
@@ -2712,6 +2735,7 @@ bind_bottom_up(SMB_Trans2_Request, SMB_Trans2_QUERY_FILE_INFO_Request, Setup=lam
 bind_bottom_up(SMB_Trans2_Request, SMB_Trans2_QUERY_PATH_INFO_Request, Setup=lambda x:x==[SMB_TRANS2_QUERY_PATH_INFORMATION])
 bind_bottom_up(SMB_Trans2_Request, SMB_Trans2_QUERY_FS_INFORMATION_Request, Setup=lambda x:x==[SMB_TRANS2_QUERY_FS_INFORMATION])
 bind_bottom_up(SMB_Trans2_Request, SMB_Trans2_SET_FILE_INFO_Request, Setup=lambda x:x==[SMB_TRANS2_SET_FILE_INFORMATION])
+bind_bottom_up(SMB_Trans2_Request, SMB_Trans2_SESSION_SETUP_Request, Setup=lambda x:x==[SMB_TRANS2_SESSION_SETUP])
 bind_bottom_up(SMB_Trans2_SET_FILE_INFO_Request, SMB_SET_FILE_BASIC_INFO_STRUCT, InformationLevel=lambda x:x==SMB_SET_FILE_BASIC_INFO or x==1004)
 bind_bottom_up(SMB_Trans2_SET_FILE_INFO_Request, SMB_SET_FILE_DISPOSITION_INFO_STRUCT, InformationLevel=lambda x:x==SMB_SET_FILE_DISPOSITION_INFO or x==1013)
 bind_bottom_up(SMB_Trans2_SET_FILE_INFO_Request, SMB_SET_FILE_ALLOCATION_INFO_STRUCT, InformationLevel=lambda x:x==SMB_SET_FILE_ALLOCATION_INFO or x==1019)

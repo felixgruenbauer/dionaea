@@ -8,6 +8,7 @@ import math
 import scipy.stats
 import numpy as np
 import logging
+import pprint
 
 rwdlog = logging.getLogger('RWD')
 
@@ -65,8 +66,8 @@ class RansomwareDetection():
                 }
         self.ops[share_name][file_name]["ops"][op] = timestamp 
 
-        rwdlog.info("New file op: %s %s %s %s"%(File_Ops[op], file_name, new_file_name, timestamp))
-        #rwdlog.info(File_Ops[op], file_name, new_file_name, timestamp)
+        rwdlog.info("New file op: %s %s %s %s"%(File_Ops[op], file_name, new_file_name, timestamp.isoformat()))
+        #print("New file op: %s %s %s %s"%(File_Ops[op], file_name, new_file_name, timestamp.isoformat()))
         # save orig file
         if op in [FILE_OP_DELETE, FILE_OP_TRUNC, FILE_OP_OPEN]:
             if not self.ops[share_name][file_name]["orig"]:
@@ -106,14 +107,18 @@ class RansomwareDetection():
 
     def compile_report(self):
         i = incident("dionaea.modules.python.smb.rwd.disc")
-        report = {}
-        report[self.access_pattern.__class__.__name__] = self.access_pattern.get_results()
-        for indic in self.indicators:
-            report[indic.__class__.__name__] = indic.get_results()
-
-        print(report)
         i.client_ip = self.ip
         i.malice_score = self.malice_score 
+        report = {}
+        score, result = self.access_pattern.get_results()
+        report[self.access_pattern.__class__.__name__] = (score, result) 
+        setattr(i, "AccessPattern", score)
+        for indic in self.indicators:
+            score, result = indic.get_results()
+            report[indic.__class__.__name__] = (score, result) 
+            setattr(i, indic.__class__.__name__, score)
+
+        pprint.pprint(report)
         i.report()
 
 
@@ -141,7 +146,8 @@ class AccessPattern(AbstractIndicator):
         self.time_margin = time_margin
 
     def get_results(self):
-        return self.results
+        score = len(self.results["A"]) + len(self.results["B"])
+        return score, self.results
 
     def check(self, file_name, op, timestamp, share_name, files=None):
         share_ops = self.ops[share_name]
@@ -246,7 +252,7 @@ class EntropyDiff(AbstractIndicator):
         return [FILE_OP_DELETE, FILE_OP_CLOSE]
 
     def get_results(self):
-        return self.results
+        return len(self.results), self.results
 
     def entropy(self, data):
         #orig_count = np.bincount(np.fromstring(orig_file, np.ubyte))
@@ -281,7 +287,7 @@ class FileMagic(AbstractIndicator):
         self.results = {} 
 
     def get_results(self):
-        return self.results
+        return len(self.results), self.results
 
     def check(self, file_name, op, timestamp, share_name, files=None):
         if not files:
@@ -307,7 +313,7 @@ class Encryption(AbstractIndicator):
         self.results = {}
 
     def get_results(self):
-        return self.results
+        return len(self.results), self.results
 
     def required_ops(self):
         return [FILE_OP_DELETE, FILE_OP_CLOSE]
@@ -365,12 +371,12 @@ class OpsPerExt(AbstractIndicator):
         self.results = {}
 
     def get_results(self):
-        return self.results
+        return 0, self.results
 
     def check(self, file_name, op, timestamp, share_ops, files=None):
-        ext = fs.path.splitext(file_name) 
+        ext = fs.path.splitext(file_name)[-1] 
         if not ext in self.results:
-            self.results[ext] = dict.fromkeys(range(9), 0) 
+            self.results[ext] = dict.fromkeys(File_Ops.keys(), 0) 
         self.results[ext][op] += 1
         return 0, None
 

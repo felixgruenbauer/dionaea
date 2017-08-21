@@ -644,12 +644,6 @@ class smbd(connection):
                 respParam = SMB_Error_Response()
                 rstatus = STATUS_OBJECT_PATH_NOT_FOUND 
 
-            i = incident("dionaea.modules.python.smb.treeconnect")
-            i.con = self
-            i.share = shareName
-            i.status = rstatus
-            i.report()
-
             r = respParam
         elif Command == SMB_COM_TREE_DISCONNECT:
             self.treeConTable.pop(reqHeader.TID, None) 

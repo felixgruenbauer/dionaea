@@ -66,7 +66,7 @@ class RansomwareDetection():
                 }
         self.ops[share_name][file_name]["ops"][op] = timestamp 
 
-        rwdlog.info("New file op: %s %s %s %s"%(File_Ops[op], file_name, new_file_name, timestamp.isoformat()))
+        #rwdlog.info("New file op: %s %s %s %s"%(File_Ops[op], file_name, new_file_name, timestamp.isoformat()))
         #print("New file op: %s %s %s %s"%(File_Ops[op], file_name, new_file_name, timestamp.isoformat()))
         # save orig file
         if op in [FILE_OP_DELETE, FILE_OP_TRUNC, FILE_OP_OPEN]:
@@ -109,16 +109,23 @@ class RansomwareDetection():
         i = incident("dionaea.modules.python.smb.rwd.disc")
         i.client_ip = self.ip
         i.malice_score = self.malice_score 
-        report = {}
+        #report = {}
+        #report["malice score"] = self.malice_score
+        #report["client ip"] = self.ip
+        print(self.ip, "malice score:", self.malice_score)
         score, result = self.access_pattern.get_results()
-        report[self.access_pattern.__class__.__name__] = (score, result) 
+        print("AccessPattern", score)
+        rwdlog.debug("AccessPattern result: %s" % result)
+        #report[self.access_pattern.__class__.__name__] = (score, result) 
         setattr(i, "AccessPattern", score)
         for indic in self.indicators:
             score, result = indic.get_results()
-            report[indic.__class__.__name__] = (score, result) 
+            #report[indic.__class__.__name__] = (score, result) 
             setattr(i, indic.__class__.__name__, score)
-
-        pprint.pprint(report)
+            print("%s %s" % (indic.__class__.__name__, score))
+            rwdlog.debug("%s : %s" % (indic.__class__.__name__, result))
+        print(self.ip, "malice score:", self.malice_score)
+        #pprint.pprint(report, compact=True, width=40, depth=1)
         i.report()
 
 
@@ -152,6 +159,14 @@ class AccessPattern(AbstractIndicator):
     def check(self, file_name, op, timestamp, share_name, files=None):
         share_ops = self.ops[share_name]
         file_ops = share_ops[file_name]["ops"]
+
+        for f in self.results["A"]:
+            if file_name in f:
+                return 0, None
+        for f in self.results["B"]:
+            if file_name in f:
+                return 0, None
+
 
         # class A : in papers: open -> read -> overwrite -> close
         # smb: open > read > (close > trunc > write)/overwrite > close
@@ -296,8 +311,8 @@ class FileMagic(AbstractIndicator):
         orig_file, locked_file = files
         if not share_ops[orig_file]["orig"] and not share_ops[locked_file]["modified"]:
             return 0, None
-        orig_magic = magic.from_buffer(share_ops[orig_file]["orig"])
-        mod_magic = magic.from_buffer(share_ops[locked_file]["modified"])
+        orig_magic = magic.from_buffer(share_ops[orig_file]["orig"], mime=True)
+        mod_magic = magic.from_buffer(share_ops[locked_file]["modified"], mime=True)
         result = (orig_magic, mod_magic)
         if orig_magic != mod_magic:
             self.results[files] = result

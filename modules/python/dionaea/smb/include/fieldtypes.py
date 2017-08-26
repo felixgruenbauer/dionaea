@@ -642,9 +642,9 @@ class MultiFieldLenField(Field):
                 fld,fval = pkt.getfield_and_val(fieldname)
                 f = fld.size(pkt, fval)
                 l += f
-            l = self.adjust(pkt,l)
+            x = self.adjust(pkt,l)
 #        print("MultiFIeldLenField %i" % l)
-        return l
+        return x
 
 
 class FieldLenField(Field):

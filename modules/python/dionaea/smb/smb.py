@@ -65,7 +65,7 @@ STATE_NTREAD = 5
 
 registered_services = {}
 
-conCache = TTLCache(5, 1200) 
+conCache = TTLCache(5, 120) 
 
 
 def register_rpc_service(service):
@@ -151,15 +151,10 @@ class smbd(connection):
         self.processors()
 
     def handle_io_in(self,data):
-
-        try:
-            p = NBTSession(data, _ctx=self)
-        except:
-            t = traceback.format_exc()
-            smblog.error(t)
-            return len(data)
+        msg = data
 
         # large write requests are segmented -> buffer till we have everything
+        p = NBTSession(data[:4])
         if len(data) < (p.LENGTH+4) or self.segPak == True:
             if self.segPakLen == 0:
                 self.segPak = True
@@ -168,16 +163,24 @@ class smbd(connection):
 
             #we probably do not have the whole packet yet -> return 0
 
-            smblog.error('=== SMB did not get enough data')
+            #smblog.debug('SMB did not get enough data - fragmeneted packet possibly')
             self.buffer += data
 
             if len(self.buffer) == self.segPakLen+4:
-                p = NBTSession(self.buffer, _ctx=self)
+                msg = self.buffer
                 self.segPakLen = 0
                 self.buffer = b""
                 self.segPak = False
             else:
                 return len(data) 
+
+        try:
+            p = NBTSession(msg)
+        except:
+            t = traceback.format_exc()
+            smblog.error(t)
+            return len(data)
+
 
         if p.TYPE == 0x81:
             self.send(NBTSession(TYPE=0x82).build())
@@ -778,7 +781,7 @@ class smbd(connection):
                             fileHandle = -1
                             createAction = SMB_CREATDISP_FILE_OPEN
                             resp.FileAttributes = SMB_FA_DIRECTORY
-                            smblog.info("OPEN Folder! %s" % fileName)
+                            #smblog.info("OPEN Folder! %s" % fileName)
                     # TODO what happens when a file exists and CREATOPT_DIR is set
                     elif (reqParam.CreateOptions & SMB_CREATOPT_DIRECTORY) and not memFS.exists(fileName):
                         try:
@@ -786,7 +789,7 @@ class smbd(connection):
                             fileHandle = -1
                             resp.FileAttributes = SMB_FA_DIRECTORY
                             createAction = SMB_CREATDISP_FILE_CREATE
-                            smblog.info("OPEN Folder! %s" % fileName)
+                            #smblog.info("OPEN Folder! %s" % fileName)
                         except Exception:
                             rstatus = STATUS_ACCESS_DENIED
                     else:
@@ -802,7 +805,7 @@ class smbd(connection):
                             self.rwd.new_file_op(op, fileName, share)
 
                         fileHandle = memFS.openbin(fileName, mode)
-                        smblog.info("OPEN FILE! %s" % fileName)
+                        #smblog.info("OPEN FILE! %s" % fileName)
 
                 # compile response
                 if rstatus == STATUS_SUCCESS:
@@ -891,7 +894,7 @@ class smbd(connection):
             i.con = self
             i.url = "smb://%s/%s" % (self.remote.host, filename)
             i.report()
-            smblog.info("OPEN FILE! %s" % filename)
+            #smblog.info("OPEN FILE! %s" % filename)
 
         elif Command == SMB_COM_ECHO:
             r = p.getlayer(SMB_Header).payload
@@ -992,7 +995,7 @@ class smbd(connection):
                 r.DataLenLow = len(rdata.Bytes) % 65535
                 r.DataLenHigh = int((len(rdata.Bytes) - r.DataLenLow) / 65535)
                 r /= rdata
-                smblog.info('Read %d bytes from %s'% (len(rdata.Bytes),self.fileOpenTable[reqParam.FID]["FileName"])) 
+                #smblog.info('Read %d bytes from %s'% (len(rdata.Bytes),self.fileOpenTable[reqParam.FID]["FileName"])) 
             else:
                 # self.outbuf should contain response buffer now
                 #if not self.outbuf:
@@ -1069,7 +1072,7 @@ class smbd(connection):
                     self.rwd.new_file_op(rwd.FILE_OP_RENAME, path, share, new_file_name=newFileName)
                            
 
-            smblog.info('Move %s to %s' % (oldFileName, newFileName)) 
+            #smblog.info('Move %s to %s' % (oldFileName, newFileName)) 
             r = resp
 
         elif Command == SMB_COM_TRANSACTION:
@@ -1306,7 +1309,7 @@ class smbd(connection):
                 infoLvl = ''
                 if rstatus == STATUS_SUCCESS:
                     infoLvl = reqParam.InformationLevel
-                    smblog.info('Query info for file %s' % fileName)
+                    #smblog.info('Query info for file %s' % fileName)
                     isFile = self.treeConTable[reqHeader.TID]["Share"]["service"] == SMB_SERVICE_DISK_SHARE
                     info = ""
                     if infoLvl == SMB_QUERY_FILE_ALL_INFO:
@@ -1470,7 +1473,7 @@ class smbd(connection):
                 searchPattern = fileName.split("/")[-1]
                 dirPath = fileName[:-len(searchPattern)]
                 # TODO if FileName is empty return all files in the current? dir
-                smblog.info('Listing %s in %s' % (searchPattern, dirPath)) 
+                #smblog.info('Listing %s in %s' % (searchPattern, dirPath)) 
 
                 searchResults = []
                 try:
@@ -1567,7 +1570,7 @@ class smbd(connection):
                 rstatus = STATUS_OBJECT_PATH_SYNTAX_BAD
                 #resp = SMB_Error_Response()
             else:
-                smblog.info('Delete %s in %s' % (searchPattern, dirPath)) 
+                #smblog.info('Delete %s in %s' % (searchPattern, dirPath)) 
 
                 searchResults = memFS.filterdir(dirPath, files=[searchPattern], exclude_dirs=["*"])
                 rstatus = STATUS_NO_SUCH_FILE
@@ -1603,7 +1606,7 @@ class smbd(connection):
             except fs.errors.RemoveRootError:
                 rstatus = STATUS_CANNOT_DELETE
 
-            smblog.info('Delete directory %s' % (dirName)) 
+            #smblog.info('Delete directory %s' % (dirName)) 
 
                     
             r = resp
@@ -1772,6 +1775,8 @@ class smbd(connection):
         smbd.active_con_count -= 1
 
     def save_fs_diff(self):
+        mod_files = 0
+        created_files = 0
         dionaea_config = g_dionaea.config().get("dionaea")
         download_dir = dionaea_config.get("download.dir")
         date = datetime.datetime.now().isoformat()
@@ -1790,11 +1795,17 @@ class smbd(connection):
                         #diff[share][file_name] = b"".join(diff_gen)
                         if memfs.getbytes(file_name) == def_memfs.getbytes(file_name): 
                             continue
+                        else:
+                            mod_files += 1
                     #diff[share][file_name] = memfs.getbytes(file_name) 
                     name = fs.path.join(share, file_name.strip("/"))
                     diff_zip.writestr(name, memfs.getbytes(file_name))
+                    created_files += 1
 
         diff_zip.close()
+        smblog.info("Modified files: %d" % mod_files)
+        smblog.info("Created files: %d" % created_files)
+        print("Modified files:", mod_files, "Created files:", created_files)
 
 
 class epmapper(smbd):

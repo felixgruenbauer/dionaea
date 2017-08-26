@@ -105,6 +105,8 @@ class smbd(connection):
                 conData = conCache.pop(self.remote.host)
                 self.sharesTable = conData["Shares"]
                 self.rwd = conData["Detection"]
+            elif not self.remote.host:
+                pass
             else:
                 self.sharesTable = copy.deepcopy(smbd.config.shares)
                 self.rwd = rwd.RansomwareDetection(self.sharesTable, smbd.config, self.remote.host)

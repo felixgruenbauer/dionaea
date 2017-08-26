@@ -65,7 +65,7 @@ STATE_NTREAD = 5
 
 registered_services = {}
 
-conCache = TTLCache(5, 1200) 
+conCache = TTLCache(5, 120) 
 
 
 def register_rpc_service(service):
@@ -1775,6 +1775,8 @@ class smbd(connection):
         smbd.active_con_count -= 1
 
     def save_fs_diff(self):
+        mod_files = 0
+        created_files = 0
         dionaea_config = g_dionaea.config().get("dionaea")
         download_dir = dionaea_config.get("download.dir")
         date = datetime.datetime.now().isoformat()
@@ -1793,11 +1795,17 @@ class smbd(connection):
                         #diff[share][file_name] = b"".join(diff_gen)
                         if memfs.getbytes(file_name) == def_memfs.getbytes(file_name): 
                             continue
+                        else:
+                            mod_files += 1
                     #diff[share][file_name] = memfs.getbytes(file_name) 
                     name = fs.path.join(share, file_name.strip("/"))
                     diff_zip.writestr(name, memfs.getbytes(file_name))
+                    created_files += 1
 
         diff_zip.close()
+        smblog.info("Modified files: %d" % mod_files)
+        smblog.info("Created files: %d" % created_files)
+        print("Modified files:", mod_files, "Created files:", created_files)
 
 
 class epmapper(smbd):

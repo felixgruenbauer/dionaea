@@ -38,6 +38,7 @@ File_Ops = {
 
 class RansomwareDetection():
     def __init__(self, shares, config, ip):
+        self.start_time = datetime.datetime.now()
         self.ip = ip
         self.config = config 
         self.shares = shares
@@ -106,26 +107,22 @@ class RansomwareDetection():
         self.compile_report()
 
     def compile_report(self):
+        runtime = (datetime.datetime.now() - self.start_time).total_seconds()
         i = incident("dionaea.modules.python.smb.rwd.disc")
         i.client_ip = self.ip
         i.malice_score = self.malice_score 
-        #report = {}
-        #report["malice score"] = self.malice_score
-        #report["client ip"] = self.ip
-        print(self.ip, "malice score:", self.malice_score)
+        i.runtime = runtime
         score, result = self.access_pattern.get_results()
         print("AccessPattern", score)
         rwdlog.debug("AccessPattern result: %s" % result)
-        #report[self.access_pattern.__class__.__name__] = (score, result) 
         setattr(i, "AccessPattern", score)
         for indic in self.indicators:
             score, result = indic.get_results()
-            #report[indic.__class__.__name__] = (score, result) 
             setattr(i, indic.__class__.__name__, score)
             print("%s %s" % (indic.__class__.__name__, score))
             rwdlog.debug("%s : %s" % (indic.__class__.__name__, result))
         print(self.ip, "malice score:", self.malice_score)
-        #pprint.pprint(report, compact=True, width=40, depth=1)
+        print("Runtime:", runtime)
         i.report()
 
 

@@ -109,15 +109,19 @@ class RansomwareDetection():
         i = incident("dionaea.modules.python.smb.rwd.disc")
         i.client_ip = self.ip
         i.malice_score = self.malice_score 
+        i.indic_scores = {}
         report = {}
         score, result = self.access_pattern.get_results()
         report[self.access_pattern.__class__.__name__] = (score, result) 
         setattr(i, "AccessPattern", score)
+        #i.indic_scores["AccessPattern"] = score
         for indic in self.indicators:
             score, result = indic.get_results()
             report[indic.__class__.__name__] = (score, result) 
             setattr(i, indic.__class__.__name__, score)
+            #i.indic_scores[indic.__class__.__name__] = score
 
+        print("Malice score:", self.malice_score)
         pprint.pprint(report)
         i.report()
 

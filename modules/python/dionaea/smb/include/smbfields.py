@@ -2213,9 +2213,9 @@ class SMB_Trans2_Final_Response(Packet):
         ByteField("Reserved2",0), 
         FieldListField("Setup", None, LEShortEnumField("", None, SMB_Trans2_Commands)),# count_from = lambda pkt: pkt.setup()),
         MultiFieldLenField("ByteCount", None, fmt='<H', length_of=("Pad1","Param","Pad2"), adjust=lambda pkt,x:x+len(pkt.payload)),
-        StrFixedLenField("Pad1", None, length_from=lambda x:x.lengthfrom_Pad1()),
+        StrFixedLenField("Pad1", b"", length_from=lambda x:x.lengthfrom_Pad1()),
         PacketField("Param", None, Packet),
-        StrFixedLenField("Pad2", None, length_from=lambda x:x.lengthfrom_Pad2()),
+        StrFixedLenField("Pad2", b"", length_from=lambda x:x.lengthfrom_Pad2()),
         #PacketListField("Data", None, PacketField("", None, Packet)),
     ]
 

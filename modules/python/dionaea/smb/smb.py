@@ -76,6 +76,7 @@ def register_rpc_service(service):
 class smbd(connection):
     config = None 
     active_con_count = 0
+    max_fs_size = 60000000 
 
 
 
@@ -99,7 +100,6 @@ class smbd(connection):
         self.fsSize = 0
         self.SectorsPerAllocationUnit = 8
         self.BytesPerSector = 512
-        self.TotalAllocationUnits = 60000000//(self.BytesPerSector*self.SectorsPerAllocationUnit)
         if smbd.config:
             if self.remote.host in conCache:
                 conData = conCache.pop(self.remote.host)
@@ -109,8 +109,10 @@ class smbd(connection):
                 self.sharesTable = copy.deepcopy(smbd.config.shares)
                 self.rwd = rwd.RansomwareDetection(self.sharesTable, smbd.config, self.remote.host)
 
+                for share_name in self.sharesTable: 
+                    self.sharesTable[share_name]["memfs"] = self.config.get_share_fs(share_name)
+                smbd.max_fs_size = self.get_shares_size() + smbd.config.memfs_limit
 
-            self.TotalAllocationUnits = smbd.config.memfs_limit//(self.BytesPerSector*self.SectorsPerAllocationUnit)
 
  
  
@@ -624,9 +626,6 @@ class smbd(connection):
                 share = self.sharesTable[shareName]
                 respParam.NativeFileSystem = share["nativefs"]
                 respParam.Service = share["service"] 
-                if not share["memfs"]:
-                    share["memfs"] = self.config.get_share_fs(shareName)
-
                 
                 tid = len(self.treeConTable.keys()) 
                 self.treeConTable[tid] = {
@@ -922,7 +921,7 @@ class smbd(connection):
                         add_bytes = 0
                     else:
                         add_bytes = abs(add_bytes)
-                    if add_bytes + self.fsSize > smbd.config.memfs_limit:
+                    if add_bytes + self.get_shares_size() > smbd.max_fs_size:
                         rstatus = STATUS_DISK_FULL
                         r = SMB_Error_Response()
                         icd = incident("dionaea.smb.memoryfs.full")
@@ -1251,14 +1250,15 @@ class smbd(connection):
                 r.Param = SMB_Trans2_QUERY_FS_INFO_Response_Param()
                 reqParam = p.getlayer(SMB_Trans2_QUERY_FS_INFORMATION_Request)
                 infoLvl = reqParam.InformationLevel
-                freeUnits = self.TotalAllocationUnits - self.fsSize//(self.BytesPerSector*self.SectorsPerAllocationUnit)
+                TotalAllocationUnits = smbd.max_fs_size//(self.BytesPerSector*self.SectorsPerAllocationUnit)
+                freeUnits = TotalAllocationUnits - self.get_shares_size()//(self.BytesPerSector*self.SectorsPerAllocationUnit)
 
                 if infoLvl == SMB_QUERY_FS_VOLUME_INFO:
                     info = SMB_STRUCT_QUERY_FS_VOLUME_INFO()
                     info.VolumeLabel = "DISK A"
                 elif infoLvl == SMB_QUERY_FS_SIZE_INFO:
                     info = SMB_STRUCT_QUERY_FS_SIZE_INFO()
-                    info.TotalAllocationUnits = self.TotalAllocationUnits 
+                    info.TotalAllocationUnits = TotalAllocationUnits 
                     info.TotalFreeAllocationUnits = freeUnits 
                     info.SectorsPerAllocationUnit = self.SectorsPerAllocationUnit 
                     info.BytesPerSector = self.BytesPerSector 
@@ -1272,7 +1272,7 @@ class smbd(connection):
                     info.ObjectId = uuid3(NAMESPACE_OID, self.treeConTable[reqHeader.TID]["Share"]["name"]).bytes
                 else:
                     info = SMB_STRUCT_QUERY_FULL_FS_SIZE_INFO()
-                    info.TotalAllocationUnits = self.TotalAllocationUnits 
+                    info.TotalAllocationUnits = TotalAllocationUnits 
                     info.CallerFreeAllocationUnits = freeUnits 
                     info.ActualFreeAllocationUnits = freeUnits 
                     info.SectorsPerAllocationUnit = self.SectorsPerAllocationUnit 
@@ -1803,9 +1803,23 @@ class smbd(connection):
                     created_files += 1
 
         diff_zip.close()
-        smblog.info("Modified files: %d" % mod_files)
-        smblog.info("Created files: %d" % created_files)
-        print("Modified files:", mod_files, "Created files:", created_files)
+        smblog.info("Modified files: %d Created files: %d" % (mod_files, created_files))
+        print("Modified files: %d Created files: %d" % (mod_files, created_files))
+
+
+    def get_shares_size(self):
+        size = 0
+        for share_name in self.sharesTable:
+            size += get_memfs_size(self.sharesTable[share_name]["memfs"])
+        return size
+
+
+def get_memfs_size(memfs):
+    size = 0
+    for root, dirs, files in memfs.walk(namespaces=["details"]):
+        size += sum(f.size for f in files)
+    return size
+
 
 
 class epmapper(smbd):

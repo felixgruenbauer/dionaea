@@ -281,7 +281,7 @@ class EntropyDiff(AbstractIndicator):
         if not files:
             return 0, None
         orig_file, locked_file = files
-        if not share_ops[orig_file]["orig"] and not share_ops[locked_file]["modified"]:
+        if not share_ops[orig_file]["orig"] or not share_ops[locked_file]["modified"]:
             return 0, None
         orig = share_ops[orig_file]["orig"]
         mod = share_ops[locked_file]["modified"]
@@ -307,7 +307,7 @@ class FileMagic(AbstractIndicator):
             return 0, None
         share_ops = self.ops[share_name]
         orig_file, locked_file = files
-        if not share_ops[orig_file]["orig"] and not share_ops[locked_file]["modified"]:
+        if not share_ops[orig_file]["orig"] or not share_ops[locked_file]["modified"]:
             return 0, None
         orig_magic = magic.from_buffer(share_ops[orig_file]["orig"], mime=True)
         mod_magic = magic.from_buffer(share_ops[locked_file]["modified"], mime=True)

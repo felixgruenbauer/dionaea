@@ -5,7 +5,7 @@ If you want to change the software, it is really important to understand how it 
 :file:`dionaea.cfg` is the main configuration file.
 In the example below you can see the default configuration.
 
-.. literalinclude:: ../../conf/dionaea.cfg.in
+.. literalinclude:: ../../conf/dionaea.cfg.cmake
     :language: ini
     :caption: dionaea.cfg
 
@@ -22,7 +22,7 @@ dionaea
 
     - **getifaddrs** - auto
         This will get a list of all IP addresses of all available interfaces and bind the services to each IP.
-        It is also possible to specify a list of interfaces to use by using the :code:`listen.interfaces` perameter.
+        It is also possible to specify a list of interfaces to use by using the :code:`listen.interfaces` parameter.
 
     - **manual** - your decision
         In this mode you have to specify an additional parameter :code:`listen.addresses`.

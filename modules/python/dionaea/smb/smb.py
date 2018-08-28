@@ -185,6 +185,10 @@ class smbd(connection):
             smblog.error(t)
             return len(data)
 
+#        if len(data) < (p.LENGTH+4):
+#            #we probably do not have the whole packet yet -> return 0
+#            smblog.info('=== SMB did not get enough data')
+#            return 0
 
         if p.TYPE == 0x81:
             self.send(NBTSession(TYPE=0x82).build())
@@ -497,7 +501,7 @@ class smbd(connection):
                         try:
                             cls,pc,tag,sb = BER_identifier_dec(sb)
                         except BER_Exception as e:
-                            smblog.warn("%s" % format(e))
+                            smblog.warning("BER Exception", exc_info=True)
                             return rp
                         l,sb = BER_len_dec(sb)
                         ntlmssp = NTLMSSP_Header(sb)
@@ -599,7 +603,7 @@ class smbd(connection):
 
             else:
                 smblog.warn("Unknown Session Setup Type used")
-                
+
         elif Command == SMB_COM_TREE_CONNECT_ANDX:
             reqParam = p.getlayer(SMB_Treeconnect_AndX_Request)
             if reqParam.Flags & 0x0008:
@@ -649,6 +653,12 @@ class smbd(connection):
                 rstatus = STATUS_OBJECT_PATH_NOT_FOUND 
 
             r = respParam
+
+#            elif h.Path[-6:] == b'share\0':
+#                smblog.info('Possible CVE-2017-7494 Samba SMB RCE attempts..')
+#                r.AndXOffset = 0
+#                r.Service = "A:\0"
+#                r.NativeFileSystem = "NTFS\0"
         elif Command == SMB_COM_TREE_DISCONNECT:
             self.treeConTable.pop(reqHeader.TID, None) 
             r = SMB_Treedisconnect()
@@ -678,6 +688,18 @@ class smbd(connection):
             else:
                 rstatus = STATUS_INVALID_HANDLE
             r = SMB_Close_Response()
+#            r = p.getlayer(SMB_Close)
+#            if p.FID in self.fids and self.fids[p.FID] is not None:
+#                self.fids[p.FID].close()
+#                fileobj = self.fids[p.FID]
+#                icd = incident("dionaea.download.complete")
+#                icd.path = fileobj.name
+#                icd.url = "smb://" + self.remote.host
+#                icd.con = self
+#                icd.report()
+#                os.unlink(self.fids[p.FID].name)
+#                del self.fids[p.FID]
+#                r = SMB_Close_Response()
         elif Command == SMB_COM_LOGOFF_ANDX:
             r = SMB_Logoff_AndX()
         elif Command == SMB_COM_NT_CREATE_ANDX:
@@ -967,6 +989,32 @@ class smbd(connection):
             if h.FID in self.fileOpenTable and self.fileOpenTable[h.FID] is not None:
                 smblog.warn("WRITE FILE!")
                 self.fileOpenTable[h.FID].write(h.Data)
+#            h = p.getlayer(SMB_Write_AndX_Request)
+#            r.CountLow = h.DataLenLow
+#            if h.FID in self.fids and self.fids[h.FID] is not None:
+#                smblog.warning("WRITE FILE!")
+#                self.fids[h.FID].write(h.Data)
+#            else:
+#                self.buf += h.Data
+##				self.process_dcerpc_packet(p.getlayer(SMB_Write_AndX_Request).Data)
+#                if len(self.buf) >= 10:
+#                    # we got the dcerpc header
+#                    inpacket = DCERPC_Header(self.buf[:10])
+#                    smblog.debug("got header")
+#                    inpacket = DCERPC_Header(self.buf)
+#                    smblog.debug("FragLen %i len(self.buf) %i" %
+#                                 (inpacket.FragLen, len(self.buf)))
+#                    if inpacket.FragLen == len(self.buf):
+#                        outpacket = self.process_dcerpc_packet(self.buf)
+#                        if outpacket is not None:
+#                            outpacket.show()
+#                            self.outbuf = outpacket.build()
+#                        self.buf = b''
+#        elif Command == SMB_COM_WRITE:
+#            h = p.getlayer(SMB_Write_Request)
+#            if h.FID in self.fids and self.fids[h.FID] is not None:
+#                smblog.warning("WRITE FILE!")
+#                self.fids[h.FID].write(h.Data)
             r = SMB_Write_Response(CountOfBytesWritten = h.CountOfBytesToWrite)
         elif Command == SMB_COM_READ_ANDX:
             r = SMB_Read_AndX_Response()
@@ -1719,11 +1767,16 @@ class smbd(connection):
                         ctxitem.AckResult = 0
                         ctxitem.AckReason = 0
                     else:
-                        smblog.warn(
-                            "Attempt to register %s failed, UUID does not exist or is not implemented" % service_uuid)
+                        smblog.warning(
+                            "Attempt to register %s failed, UUID does not exist or is not implemented",
+                            service_uuid
+                        )
                 else:
-                    smblog.warn("Attempt to register %s failed, TransferSyntax %s is unknown" % (
-                        service_uuid, transfersyntax_uuid) )
+                    smblog.warning(
+                        "Attempt to register %s failed, TransferSyntax %s is unknown",
+                        service_uuid,
+                        transfersyntax_uuid
+                    )
                 i = incident("dionaea.modules.python.smb.dcerpc.bind")
                 i.con = self
                 i.uuid = str(service_uuid)
@@ -1760,6 +1813,11 @@ class smbd(connection):
 
     def handle_disconnect(self):
         self.smb_disc()
+#        for i in self.fids:
+#            if self.fids[i] is not None:
+#                self.fids[i].close()
+#                os.unlink(self.fids[i].name)
+#                del self.fids[i]
         return 0
 
 

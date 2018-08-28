@@ -1,8 +1,34 @@
 Changelog
 =========
 
-0.7.0 - (`master`_)
+0.8.0 - (`master`_)
 -------------------
+
+0.8.0 - (2018-06-15)
+--------------------
+
+**doc**
+
+* Add migration instructions
+* Fix warnings
+
+**build**
+
+* Replace autotools with cmake
+* Remove autotools files
+* Add git information to version string on development builds
+
+**dionaea**
+
+* Add option to enable/disable IPv4 mapped IPv6 addresses
+
+
+0.7.0 - (2018-05-01)
+--------------------
+
+**build**
+
+* Add initial cmake support
 
 **ci**
 
@@ -13,15 +39,24 @@ Changelog
 * Fix build error with OpenSSL 1.1.0
 * Improve OpenSSL 1.1.0 support
 * Cleanup connection code
+* Enable bistream for SSL/TLS connections (Thanks Aws0mus)
+* Fixing chroot bugs (Thanks Michal Ambroz)
 
 **doc**
 
 * Add additional information
 * Doxygen config file for dionaea c core
+* Ubuntu 16.04 install instructions
+
+**package**
+
+* Remove old and deprecated debian package config
 
 **python**
 
 * Fix typo in config key
+* Fix hardcoded python path
+* Fix compilation on CentOS7 (Thanks Michal Ambroz)
 
 **python/http**
 
@@ -97,7 +132,7 @@ Changelog
 
 
 0.5.1 - 2016-09-05
-~~~~~~~~~~~~~~~~~~
+------------------
 
 **dionaea**
 
@@ -105,7 +140,7 @@ Changelog
   to prevent segmentation faults
 
 0.5.0 - 2016-08-06
-~~~~~~~~~~~~~~~~~~
+------------------
 
 **dionaea**
 
@@ -140,7 +175,7 @@ Changelog
 
 
 0.4.2 - 2016-07-02
-~~~~~~~~~~~~~~~~~~
+------------------
 
 **doc**
 
@@ -166,7 +201,7 @@ Changelog
 
 
 0.4.1 - 2016-06-14
-~~~~~~~~~~~~~~~~~~
+------------------
 
 **core**
 
@@ -184,7 +219,7 @@ Changelog
 * Add support for flat object lists to work with ELK stack
 
 0.4.0 - 2016-05-31
-~~~~~~~~~~~~~~~~~~
+------------------
 
 **core**
 
@@ -212,7 +247,7 @@ Changelog
 * Enable processor pipeline
 
 0.3.0 - 2016-03-30
-~~~~~~~~~~~~~~~~~~
+------------------
 
 **core**
 
@@ -255,7 +290,7 @@ Changelog
 * Initial protocol support (Thanks to gento)
 
 0.2.1 - 2014-07-16
-~~~~~~~~~~~~~~~~~~
+------------------
 
 **core**
 
@@ -273,12 +308,12 @@ Changelog
 * virustotal API v2.0
 
 0.2.0 - 2013-11-02
-~~~~~~~~~~~~~~~~~~
+------------------
 
 Last commit by original authors.
 
 0.1.0
-~~~~~
+-----
 
 * Initial release.
 

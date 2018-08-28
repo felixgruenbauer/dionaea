@@ -14,8 +14,10 @@ Content:
 
     introduction
     installation
+    migration
     configuration
     run
+    integration
     module/index
     service/index
     ihandler/index
@@ -24,6 +26,8 @@ Content:
     development/index
     changelog
     faq
+    tips_and_tricks
+    support
 
 Old documentation:
 
@@ -33,12 +37,10 @@ Old documentation:
     old/exploitation
     old/downloads
     old/submit
-    old/development
     old/configuration
     old/utils
     old/seagfaults
     old/tips_and_tricks
-    old/support
 
 
 Indices and tables

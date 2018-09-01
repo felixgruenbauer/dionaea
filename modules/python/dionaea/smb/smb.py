@@ -48,7 +48,7 @@ from .include.asn1.ber import BER_CLASS_APP, BER_CLASS_CON,BER_identifier_enc
 from .include.asn1.ber import BER_Exception
 from dionaea.util import calculate_doublepulsar_opcode, xor
 from collections import OrderedDict
-from . import ransomware_detection as rwd 
+#from . import ransomware_detection as rwd 
 from cachetools import TTLCache
 import zipfile
 import copy
@@ -104,12 +104,12 @@ class smbd(connection):
             if self.remote.host in conCache:
                 conData = conCache.pop(self.remote.host)
                 self.sharesTable = conData["Shares"]
-                self.rwd = conData["Detection"]
+#                self.rwd = conData["Detection"]
             elif not self.remote.host:
                 pass
             else:
                 self.sharesTable = copy.deepcopy(smbd.config.shares)
-                self.rwd = rwd.RansomwareDetection(self.sharesTable, smbd.config, self.remote.host)
+#                self.rwd = rwd.RansomwareDetection(self.sharesTable, smbd.config, self.remote.host)
 
                 for share_name in self.sharesTable: 
                     self.sharesTable[share_name]["memfs"] = self.config.get_share_fs(share_name)
@@ -628,6 +628,9 @@ class smbd(connection):
 #                r.AndXOffset = 0
 #                r.Service = "A:\0"
 #                r.NativeFileSystem = "NTFS\0"
+            for sh in self.sharesTable:
+                print(sh)
+            print(shareName)
             if shareName in self.sharesTable:
                 share = self.sharesTable[shareName]
                 respParam.NativeFileSystem = share["nativefs"]
@@ -677,10 +680,10 @@ class smbd(connection):
 
                     fileName = self.fileOpenTable[reqParam.FID]["FileName"]
                     share = self.treeConTable[reqHeader.TID]["Share"]["name"]
-                    self.rwd.new_file_op(rwd.FILE_OP_CLOSE, fileName, share)
+#                    self.rwd.new_file_op(rwd.FILE_OP_CLOSE, fileName, share)
  
                     if self.fileOpenTable[reqParam.FID]["DeletePending"]:
-                        self.rwd.new_file_op(rwd.FILE_OP_DELETE, fileName, share)
+#                        self.rwd.new_file_op(rwd.FILE_OP_DELETE, fileName, share)
                        
                         memFS = self.treeConTable[reqHeader.TID]["Share"]["memfs"]
                         memFS.remove(fileName)
@@ -817,15 +820,15 @@ class smbd(connection):
                             rstatus = STATUS_ACCESS_DENIED
                     else:
                         op = None
-                        if createAction == SMB_CREATDISP_FILE_SUPERSEDE or createAction == SMB_CREATDISP_FILE_OPEN_IF:
-                            op = rwd.FILE_OP_TRUNC
-                        if createAction == SMB_CREATDISP_FILE_OPEN:
-                            op = rwd.FILE_OP_OPEN
-                        if createAction == SMB_CREATDISP_FILE_CREATE:
-                            op = rwd.FILE_OP_CREATE
-                        if op:
-                            share = self.treeConTable[reqHeader.TID]["Share"]["name"]
-                            self.rwd.new_file_op(op, fileName, share)
+#                        if createAction == SMB_CREATDISP_FILE_SUPERSEDE or createAction == SMB_CREATDISP_FILE_OPEN_IF:
+#                            op = rwd.FILE_OP_TRUNC
+#                        if createAction == SMB_CREATDISP_FILE_OPEN:
+#                            op = rwd.FILE_OP_OPEN
+#                        if createAction == SMB_CREATDISP_FILE_CREATE:
+#                            op = rwd.FILE_OP_CREATE
+#                        if op:
+#                            share = self.treeConTable[reqHeader.TID]["Share"]["name"]
+#                            self.rwd.new_file_op(op, fileName, share)
 
                         fileHandle = memFS.openbin(fileName, mode)
                         #smblog.info("OPEN FILE! %s" % fileName)
@@ -953,10 +956,10 @@ class smbd(connection):
                         icd.con = self
                         icd.report()
                     else:
-                        if add_bytes:
-                            self.rwd.new_file_op(rwd.FILE_OP_WRITE, fileName, share["name"])
-                        else:
-                            self.rwd.new_file_op(rwd.FILE_OP_OVERWRITE, fileName, share["name"])
+#                        if add_bytes:
+#                            self.rwd.new_file_op(rwd.FILE_OP_WRITE, fileName, share["name"])
+#                        else:
+#                            self.rwd.new_file_op(rwd.FILE_OP_OVERWRITE, fileName, share["name"])
                         fileHandle = self.fileOpenTable[reqParam.FID]["Handle"]
                         fileHandle.seek(offset)
                         fileHandle.write(reqParam.Data)
@@ -1026,7 +1029,7 @@ class smbd(connection):
             elif self.fileOpenTable[reqHeader.FID]["Type"] == SMB_RES_DISK:
                 share = self.treeConTable[reqHeader.TID]["Share"]["name"]
                 fileName = self.fileOpenTable[reqHeader.FID]["FileName"]
-                self.rwd.new_file_op(rwd.FILE_OP_READ, fileName, share)
+#                self.rwd.new_file_op(rwd.FILE_OP_READ, fileName, share)
 
 
                 offset = reqParam.Offset
@@ -1118,7 +1121,7 @@ class smbd(connection):
                 else:
                     memFS.move(path, newFileName)
                     share = self.treeConTable[reqHeader.TID]["Share"]["name"]
-                    self.rwd.new_file_op(rwd.FILE_OP_RENAME, path, share, new_file_name=newFileName)
+#                    self.rwd.new_file_op(rwd.FILE_OP_RENAME, path, share, new_file_name=newFileName)
                            
 
             #smblog.info('Move %s to %s' % (oldFileName, newFileName)) 
@@ -1631,7 +1634,7 @@ class smbd(connection):
                 for item in searchResults:
                     fullPath = fs.path.join(dirPath, item.name)
                     share = self.treeConTable[reqHeader.TID]["Share"]["name"]
-                    self.rwd.new_file_op(rwd.FILE_OP_DELETE, fullPath, share)
+#                    self.rwd.new_file_op(rwd.FILE_OP_DELETE, fullPath, share)
                     # TODO check if file is open somewhere
                     memFS.remove(fullPath)
                     rstatus = STATUS_SUCCESS
@@ -1826,11 +1829,11 @@ class smbd(connection):
             if self.fileOpenTable[i] is not None:
                 if self.fileOpenTable[i]["Handle"] != -1:
                     self.fileOpenTable[i]["Handle"].close()
-        self.rwd.handle_disc()
+#        self.rwd.handle_disc()
         self.save_fs_diff()
         conCache[self.remote.host] = {}
         conCache[self.remote.host]["Shares"] = self.sharesTable
-        conCache[self.remote.host]["Detection"] = self.rwd
+#        conCache[self.remote.host]["Detection"] = self.rwd
         conCache[self.remote.host]["DiscTime"] = datetime.datetime.now()
         smbd.active_con_count -= 1
 

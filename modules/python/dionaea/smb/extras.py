@@ -58,6 +58,12 @@ class SmbConfig(object):
                 "path": "",
                 "type": "printq",
             },
+            "TEST" : {
+                "comment" : "Microsoft XPS Document Writer",
+                "path": "",
+                "type": "disktree",
+            },
+
        }
 
 

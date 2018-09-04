@@ -926,22 +926,29 @@ class SMB_Data(Packet):
         StrLenField('Bytes', '', length_from = lambda pkt: pkt.ByteCount),
     ]
 
-class SMB_Negociate_Protocol_Request_Tail(Packet):
-    name="SMB Negociate Protocol Request Tail"
+class SMB_Negotiate_Protocol_Request_Tail(Packet):
+    name="SMB Negotiate Protocol Request Tail"
     fields_desc=[
         ByteField("BufferFormat",0x02),
         StrNullField("BufferData","NT LM 0.12"),
     ]
 
+class SMB_Dialect(Packet):
+    name="SMB Dialect"
+    fields_desc=[
+        ByteField("BufferFormat",0x02),
+        StrNullField("DialectString","NT LM 0.12"),
+    ]
 
-class SMB_Negociate_Protocol_Request_Counts(Packet):
-    name = "SMB Negociate_Protocol_Request_Counts"
+
+class SMB_Negotiate_Protocol_Request(Packet):
+    name = "SMB Negotiate_Protocol_Request"
     fields_desc = [
         ByteField("WordCount",0),
         #        LEShortField("ByteCount",12),
-        FieldLenField("ByteCount", 12, fmt='<H', length_of="Requests"),
+        FieldLenField("ByteCount", 12, fmt='<H', length_of="Dialects"),
         PacketListField(
-            "Requests", None, SMB_Negociate_Protocol_Request_Tail, length_from=lambda x:x.ByteCount)
+            "Dialects", None, SMB_Dialect, length_from=lambda x:x.ByteCount)
     ]
 
 
@@ -950,8 +957,8 @@ class SMB_Negociate_Protocol_Request_Counts(Packet):
 # therefore we only need the response on 60/61
 # ByteCount is actually the sum of len(ServerGUID) and len(SecurityBlob)
 # but it is not required atm, and scapy does not support combined fieldlens
-class SMB_Negociate_Protocol_Response(Packet):
-    name="SMB Negociate Response"
+class SMB_Negotiate_Protocol_Response(Packet):
+    name="SMB Negotiate Response"
     smb_cmd = SMB_COM_NEGOTIATE #0x72
     fields_desc = [
         ByteField("WordCount",17),
@@ -2668,9 +2675,9 @@ class FILE_OBJECTID_BUFFER_1(Packet):
 
 bind_bottom_up(NBTSession, NBTSession_Request, TYPE = lambda x: x==0x81)
 bind_bottom_up(NBTSession, SMB_Header, TYPE = lambda x: x==0)
-bind_bottom_up(SMB_Header, SMB_Negociate_Protocol_Response,
+bind_bottom_up(SMB_Header, SMB_Negotiate_Protocol_Response,
                Command=lambda x: x==0x72, Flags=lambda x: x&0x80)
-bind_bottom_up(SMB_Header, SMB_Negociate_Protocol_Request_Counts,
+bind_bottom_up(SMB_Header, SMB_Negotiate_Protocol_Request,
                Command=lambda x: x==0x72, Flags=lambda x: not x&0x80)
 #bind_bottom_up(SMB_Header, SMB_Sessionsetup_AndX_Request, Command=lambda x: x==0x73, Flags=lambda x: not x&0x80, Flags2=lambda x: not x&2)
 bind_bottom_up(SMB_Header, SMB_Sessionsetup_AndX_Request2, Command=lambda x: x==
@@ -2751,12 +2758,12 @@ bind_bottom_up(DCERPC_Header, DCERPC_Bind_Ack, PacketType=lambda x: x==12)
 #bind_bottom_up(SMB_Sessionsetup_AndX_Request, SMB_Treeconnect_AndX_Request, AndXCommand=lambda x: x==0x75)
 bind_bottom_up(SMB_Sessionsetup_AndX_Request2,
                SMB_Treeconnect_AndX_Request, AndXCommand=lambda x: x==0x75)
-#bind_bottom_up(SMB_Negociate_Protocol_Request_Counts, SMB_Negociate_Protocol_Request_Tail)
-#bind_bottom_up(SMB_Negociate_Protocol_Request_Tail, SMB_Negociate_Protocol_Request_Tail)
+#bind_bottom_up(SMB_Negotiate_Protocol_Request_Counts, SMB_Negotiate_Protocol_Request_Tail)
+#bind_bottom_up(SMB_Negotiate_Protocol_Request_Tail, SMB_Negotiate_Protocol_Request_Tail)
 bind_bottom_up(SMB_Header, SMB_Parameters)
 bind_bottom_up(SMB_Parameters, SMB_Data)
 
-bind_top_down(SMB_Header, SMB_Negociate_Protocol_Response, Command=0x72)
+bind_top_down(SMB_Header, SMB_Negotiate_Protocol_Response, Command=0x72)
 bind_top_down(SMB_Header, SMB_Sessionsetup_AndX_Response2, Command=0x73)
 bind_top_down(SMB_Header, SMB_Sessionsetup_ESEC_AndX_Response, Command=0x73)
 bind_top_down(SMB_Header, SMB_Treeconnect_AndX_Response, Command=0x75)
